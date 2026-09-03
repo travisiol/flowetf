@@ -1,0 +1,59 @@
+# FLOWETF — static site plus the three relays the pages expect on their own origin.
+#
+# Everything under the site is a plain file. The only reason a server is needed
+# at all is that three paths cannot be files:
+#
+#   /rpc          the chain read endpoint is geo-restricted, so the browser is
+#                 never allowed to reach it directly
+#   /ipfs/<cid>   avoids CORS and the public gateway rate limit
+#   /api/*        image and metadata pinning for the launch flow (see README)
+#
+# Swap the site address for your own before deploying.
+
+flowetf.xyz, www.flowetf.xyz {
+	root * /srv/flowetf
+	encode zstd gzip
+
+	# ── chain reads ──────────────────────────────────────────────────
+	# Robinhood is a US broker and its RPC appears to be geo-restricted:
+	# a direct fetch from some networks fails with "Failed to fetch".
+	# Relaying it here means the page works from anywhere, and the wallet
+	# still gets an absolute URL of its own for wallet_addEthereumChain.
+	handle /rpc {
+		rewrite * /
+		reverse_proxy https://rpc.mainnet.chain.robinhood.com {
+			header_up Host rpc.mainnet.chain.robinhood.com
+		}
+	}
+
+	# ── ipfs ─────────────────────────────────────────────────────────
+	# Locally pinned files win; anything else is relayed to a gateway.
+	# Content addressed by its own hash can never change, so it is cached
+	# for a year.
+	handle /ipfs/* {
+		header Cache-Control "public, max-age=31536000, immutable"
+		@nofile not file
+		reverse_proxy @nofile https://ipfs.io {
+			header_up Host ipfs.io
+		}
+		file_server
+	}
+
+	# ── launch-flow pinning ──────────────────────────────────────────
+	# POST /api/upload    body: raw image bytes
+	#                     -> { uri, url, pinned, bytes }
+	# POST /api/metadata  body: { name, description, imageUri, ...socials }
+	#                     -> { uri }
+	# Point this at whatever pinning service you use. Both are optional:
+	# a launch with no image and no description never calls them.
+	handle /api/* {
+		reverse_proxy localhost:8788
+	}
+
+	# ── the site ─────────────────────────────────────────────────────
+	# /docs, /launch and /t resolve to their index.html.
+	handle {
+		try_files {path} {path}/index.html {path}.html
+		file_server
+	}
+}

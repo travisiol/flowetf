@@ -1,0 +1,759 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Token — FLOWETF</title>
+<meta name="theme-color" content="#060C09">
+<meta name="robots" content="index,follow">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23060C09'/><path d='M9 8v16h8' stroke='%23C8FF00' stroke-width='3.2' fill='none' stroke-linecap='square'/><circle cx='22' cy='11' r='2.6' fill='%23F5B841'/></svg>">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#060C09; --paper:#0B1410; --paper2:#101C16;
+  --rule:#18291F; --rule2:#23392D;
+  --signal:#C8FF00; --settle:#F5B841; --bad:#FF6F5E;
+  --text:#E8F0EA; --muted:#7A8C82; --faint:#4A5A51;
+  --display:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --gut:20px;
+}
+@media(min-width:820px){:root{--gut:40px}}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--ink);color:var(--text);font-family:var(--display);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+.wrap{max-width:820px;margin:0 auto;padding:0 var(--gut)}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--signal);outline-offset:3px;border-radius:2px}
+p{color:var(--muted)}
+code{font-family:var(--mono);font-size:.86em;color:var(--signal);word-break:break-all}
+.lab{font-family:var(--mono);font-size:.66rem;font-weight:600;letter-spacing:.19em;text-transform:uppercase;color:var(--faint)}
+
+header{position:sticky;top:0;z-index:60;background:rgba(6,12,9,.97);backdrop-filter:blur(12px);border-bottom:1px solid var(--rule)}
+.hd{display:flex;align-items:center;justify-content:space-between;gap:12px;height:58px}
+/* Brand: the coin mark plus the wordmark.
+   Drawn as inline SVG rather than the 84KB PNG the token uses. In a header it
+   has to be sharp at 30px and present on the first paint, and a network request
+   for a logo is a request that can arrive late or not at all. */
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.brand .mk{width:30px;height:30px;flex:none;display:block;transition:transform .35s cubic-bezier(.2,.9,.3,1.2)}
+.brand:hover .mk{transform:rotate(-28deg)}
+.brand .wm{font-weight:800;letter-spacing:-.045em;font-size:1.32rem;line-height:1;color:var(--text)}
+.brand .wm .s{color:var(--settle)}
+@media(min-width:820px){.brand .mk{width:34px;height:34px}.brand .wm{font-size:1.5rem}}
+@media(prefers-reduced-motion:reduce){.brand .mk{transition:none}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;font-weight:700;font-size:.85rem;padding:9px 15px;min-height:42px;border-radius:3px;text-decoration:none;border:1px solid var(--rule2);color:var(--text);transition:border-color .15s,color .15s}
+.btn:hover{border-color:var(--signal);color:var(--signal)}
+
+main{padding:34px 0 70px}
+.hero{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.mark{width:64px;height:64px;border-radius:50%;flex:none;object-fit:cover;border:1px solid var(--rule2);display:grid;place-content:center;font-family:var(--mono);font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+h1{font-size:clamp(1.7rem,5.5vw,2.4rem);font-weight:800;letter-spacing:-.035em;line-height:1.05}
+.sub{font-family:var(--mono);font-size:.78rem;color:var(--faint);margin-top:4px}
+/* The contract address is the one thing a visitor actually needs to take away
+   with them, so it gets its own block showing the FULL address — an abbreviated
+   address is useless for buying, and re-typing one from a screen is how people
+   send funds to the wrong place. */
+.ca{margin-top:20px;border:1px solid var(--rule2);border-radius:4px;background:#0d1611}
+.ca-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 13px;border-bottom:1px solid var(--rule)}
+.ca-v{display:block;width:100%;text-align:left;padding:12px 13px;background:none;border:0;color:var(--text);
+      font-family:var(--mono);font-size:.83rem;line-height:1.55;overflow-wrap:anywhere;cursor:pointer;
+      -webkit-tap-highlight-color:transparent}
+.ca-v:hover{color:var(--signal)}
+.ca-v:focus-visible{outline:2px solid var(--signal);outline-offset:-2px}
+.cp{cursor:pointer;border-bottom:1px dotted var(--faint)}
+.cp:hover{color:var(--signal)}
+.copied{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--signal);color:#08120b;
+        font-family:var(--mono);font-size:.78rem;font-weight:700;padding:9px 16px;border-radius:3px;z-index:60;
+        opacity:0;transition:opacity .18s;pointer-events:none;white-space:nowrap;max-width:calc(100vw - 32px)}
+.copied.on{opacity:1}
+@media (prefers-reduced-motion:reduce){.copied{transition:none}}
+.badge{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:.64rem;letter-spacing:.14em;padding:5px 9px;border-radius:2px;margin-top:9px}
+.b-lock{color:#0A1000;background:var(--signal)}
+.b-del{color:var(--settle);border:1px solid #4A3A18;background:rgba(245,184,65,.07)}
+.b-none{color:var(--muted);border:1px solid var(--rule2)}
+
+.panel{margin-top:26px;background:var(--paper);border:1px solid var(--rule);border-radius:5px;overflow:hidden}
+/* Two labels live in this header on some panels; without a flex row they run
+   together into "FEES95.0% OF THE POOL". */
+.panel-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:13px 17px;border-bottom:1px solid var(--rule);background:var(--paper2)}
+.panel-b{padding:6px 17px 14px}
+.led{display:flex;align-items:baseline;gap:8px;padding:11px 0;border-bottom:1px solid var(--rule)}
+.led:last-child{border-bottom:0}
+.led .k{font-size:.88rem;color:var(--muted);flex:none;max-width:56%}
+.led .d{flex:1;border-bottom:1px dotted var(--rule2);transform:translateY(-4px);min-width:10px}
+/* flex:none here meant the value box refused to shrink, so word-break never
+   applied and a long value ran off the right edge and was clipped in silence —
+   on a phone that hid the one line that matters most, which address holds the
+   fee rights. Let it shrink and wrap instead. */
+.led .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:.85rem;font-weight:700;flex:0 1 auto;min-width:0;text-align:right;overflow-wrap:anywhere}
+.v-set{color:var(--settle)} .v-sig{color:var(--signal)} .v-mut{color:var(--faint)} .v-bad{color:var(--bad)}
+.note{border:1px solid var(--rule2);border-left:2px solid var(--settle);border-radius:3px;padding:13px 15px;margin-top:20px}
+.note p{font-size:.87rem}
+.note.lock{border-left-color:var(--signal)}
+.links{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}
+/* A ring for THIS token's cycle. The one on the home page is the platform's
+   settlement window; this one is read from this vault's own clock. */
+.cyc{display:flex;align-items:center;gap:18px;margin-top:22px;border:1px solid var(--rule2);border-radius:4px;padding:16px 18px;background:#0d1611}
+.cyc svg{transform:rotate(-90deg);flex:none}
+.cyc .trk{stroke:var(--rule);fill:none;stroke-width:5}
+.cyc .arc{stroke:var(--signal);fill:none;stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset .9s linear}
+.cyc.idle .arc{stroke:var(--faint);stroke-dasharray:4 7;transition:none}
+.cyc .txt .big{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:1.35rem;font-weight:700;letter-spacing:-.02em}
+.cyc.idle .txt .big{font-size:1rem;color:var(--muted)}
+.cyc .txt .lab{display:block;margin-bottom:3px}
+.cyc .txt .sub2{font-size:.78rem;color:var(--faint);margin-top:5px;line-height:1.4}
+@media (prefers-reduced-motion:reduce){.cyc .arc{transition:none}}
+/* The one action most visitors came for gets the accent; the rest stay quiet so
+   the row does not turn into four competing buttons. */
+.btn-p{background:var(--signal);border-color:var(--signal);color:#08120b}
+.acts{display:flex;flex-wrap:wrap;gap:9px}
+.hint{font-size:.82rem;color:var(--faint);line-height:1.5}
+/* A disabled control must look unavailable, not merely be unavailable — a
+   button that reads as clickable and does nothing is worse than a plain one. */
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn:disabled:hover{border-color:var(--rule2);color:var(--text)}
+.drow{display:flex;justify-content:space-between;gap:12px;font-size:.85rem;padding:7px 0;border-bottom:1px solid var(--rule)}
+.drow:last-child{border-bottom:0}
+.drow b{font-family:var(--mono);font-weight:700}
+.btn-p:hover{background:#d6ff33;border-color:#d6ff33;color:#08120b}
+.msg{padding:40px 0;text-align:center}
+.msg p{max-width:46ch;margin:10px auto 0}
+footer{border-top:1px solid var(--rule);padding:24px 0 44px}
+.fine{font-size:.75rem;color:var(--faint);line-height:1.65;max-width:70ch}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid var(--rule2);border-top-color:var(--signal);border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.spin{animation:none}}
+@media(prefers-reduced-motion:no-preference){
+  .panel{opacity:0;transform:translateY(10px);animation:up .45s cubic-bezier(.2,.7,.3,1) forwards}
+  .panel:nth-of-type(2){animation-delay:.06s}
+  .panel:nth-of-type(3){animation-delay:.12s}
+  @keyframes up{to{opacity:1;transform:none}}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap hd">
+    <a class="brand" href="/">
+      <svg class="mk" viewBox="0 0 40 40" aria-hidden="true">
+        <g fill="none" stroke-linecap="round" stroke-width="4.6">
+          <path stroke="var(--settle)" d="M21.71 6.10A14 14 0 0 1 33.90 18.29"/>
+          <path stroke="var(--signal)" d="M33.90 21.71A14 14 0 0 1 21.71 33.90"/>
+          <path stroke="var(--signal)" d="M18.29 33.90A14 14 0 0 1 6.10 21.71"/>
+          <path stroke="var(--signal)" d="M6.10 18.29A14 14 0 0 1 18.29 6.10"/>
+        </g>
+        <polyline fill="none" stroke="#E8F0EA" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"
+                  points="13.73,24.93 17.98,22.15 22.02,23.67 27.17,16.19"/>
+        <circle cx="27.17" cy="16.19" r="2.1" fill="var(--settle)"/>
+      </svg>
+      <span class="wm">FLOW<span class="s">ETF</span></span>
+    </a>
+    <span style="display:flex;gap:8px"><a class="btn" href="/docs">Docs</a><a class="btn" href="/">All tokens</a></span>
+  </div>
+</header>
+
+<main><div class="wrap" id="root">
+  <div class="msg"><span class="spin"></span><p>Reading this token from the chain…</p></div>
+</div></main>
+
+<footer>
+  <div class="wrap">
+    <p class="fine">
+      Everything above is read live from Robinhood Chain, not from a database.
+      Payout size depends entirely on trading activity and can be zero. FLOWETF is not
+      affiliated with Robinhood, long.xyz, or any issuer of the underlying assets.
+    </p>
+  </div>
+</footer>
+
+<script type="module">
+import { keccak256, hexToBytes, bytesToHex, pad } from '/keccak.js';
+
+const RPC = '/rpc';
+const FACTORY  = '0xd2ba46aeffec4bfddde62c2dd3e8c76c5c9aeedc';
+const HOOK     = '0x4e3468951d49f2eea976ed0d6e75ffcb44a9a544';
+const EXPLORER = 'https://robinhoodchain.blockscout.com';
+/* Confirmed by the owner from a real long.xyz page: the path is /tokens/,
+   plural. The earlier guess of /token/ would have produced a dead link on every
+   card — app.long.xyz answers 403 to server-side probes, so this could not be
+   verified from here and had to come from someone with a browser. */
+const LONG_TOKEN_URL = (a) => 'https://app.long.xyz/tokens/' + a;
+
+/* Selectors are computed, never typed. Three hand-written ones on the home page
+   turned out to be wrong, and a wrong selector fails silently — the call simply
+   returns nothing and the page looks empty rather than broken. */
+const sel = (sig) => bytesToHex(keccak256(new TextEncoder().encode(sig))).slice(0, 10);
+
+/* Uniswap V4 pool id = keccak of the abi-encoded PoolKey. Signed ints are
+   two's complement over 32 bytes, so a negative tickSpacing must wrap rather
+   than be padded with zeroes — getting that wrong yields a plausible-looking
+   id that matches no pool at all. */
+const word = (v) => {
+  let n = BigInt(v);
+  if (n < 0n) n += 1n << 256n;
+  return n.toString(16).padStart(64, '0');
+};
+const keccakAbi = (c0, c1, fee, tickSpacing, hooks) => bytesToHex(keccak256(hexToBytes(
+  '0x' + word(BigInt(c0)) + word(BigInt(c1)) + word(fee) + word(tickSpacing) + word(BigInt(hooks)))));
+
+let provider = window.ethereum || null;
+async function rpc(method, params) {
+  if (provider) { try { return await provider.request({ method, params }); } catch (e) { /* fall through */ } }
+  const r = await fetch(RPC, { method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) });
+  const j = await r.json();
+  if (j.error) throw new Error(j.error.message);
+  return j.result;
+}
+const call = (to, data) => rpc('eth_call', [{ to, data }, 'latest']);
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const short = (a) => a.slice(0, 8) + '…' + a.slice(-6);
+const decStr = (out) => {
+  if (!out || out === '0x') return null;
+  const h = out.slice(2);
+  try {
+    const L = parseInt(h.substr(64, 64), 16);
+    if (!L || L > 200) return null;
+    let s = '';
+    const b = h.substr(128, L * 2);
+    for (let i = 0; i < b.length; i += 2) s += String.fromCharCode(parseInt(b.substr(i, 2), 16));
+    return s.replace(/[^\x20-\x7E]/g, '').trim() || null;
+  } catch (e) { return null; }
+};
+const num = (o) => (o && o !== '0x' ? BigInt(o) : 0n);
+const addrOf = (o) => (o && o.length >= 66 ? '0x' + o.slice(26, 66) : null);
+
+function identicon(addr, size) {
+  const a = addr.replace(/^0x/, '');
+  const h1 = parseInt(a.substr(0, 6), 16) % 360;
+  const h2 = (h1 + 40 + parseInt(a.substr(6, 4), 16) % 90) % 360;
+  const rot = parseInt(a.substr(10, 4), 16) % 360;
+  return `background:linear-gradient(${rot}deg,hsl(${h1},70%,42%),hsl(${h2},75%,26%));font-size:${size}px`;
+}
+const led = (k, v, cls = '') =>
+  `<div class="led"><span class="k">${k}</span><span class="d"></span><span class="v ${cls}">${v}</span></div>`;
+
+/* Any address on this page is something someone may need to paste elsewhere.
+   Shortened text is fine to read, but what lands on the clipboard is always the
+   full address. */
+const copyable = (addr, label) =>
+  `<code class="cp" data-copy="${esc(addr)}" role="button" tabindex="0" title="Copy ${esc(addr)}">${esc(label || short(addr))}</code>`;
+
+const params = new URLSearchParams(location.search);
+const token = (params.get('a') || '').trim().toLowerCase();
+const root = document.getElementById('root');
+
+function fail(title, body) {
+  root.innerHTML = `<div class="msg"><h1>${esc(title)}</h1><p>${esc(body)}</p>
+    <div class="links" style="justify-content:center"><a class="btn" href="/">Back to all tokens</a></div></div>`;
+}
+
+if (!/^0x[0-9a-f]{40}$/.test(token)) {
+  fail('No token specified', 'Open this page from a token card, or add ?a=0x… to the address bar.');
+} else {
+  load().catch((e) => fail('Could not reach the chain', e.message || String(e)));
+}
+
+async function load() {
+  /* Two rounds, not ten.
+     Every read below needs only the token address, so they go together. The page
+     used to walk them one at a time — each round trip is a couple of hundred
+     milliseconds, and twenty-seven of them in a row meant seven seconds staring
+     at "Reading this token from the chain". Nothing was slow; everything was
+     merely waiting its turn. */
+  const [symRaw, nameRaw, vaultRaw, benRaw, uriRaw, stateRaw, initRaw] = await Promise.all([
+    call(token, sel('symbol()')).catch(() => null),
+    call(token, sel('name()')).catch(() => null),
+    call(FACTORY, sel('vaultOf(address)') + pad(token)).catch(() => null),
+    call(HOOK, sel('getBeneficiaries(address)') + pad(token)).catch(() => null),
+    call(token, sel('tokenURI()')).catch(() => null),
+    call(HOOK, sel('getState(address)') + pad(token)).catch(() => null),
+    call(FACTORY, sel('VAULT_INIT_CODE_HASH()')).catch(() => null),
+  ]);
+
+  const symbol = decStr(symRaw);
+  if (!symbol) return fail('Not a token', 'Nothing at this address responds like an ERC-20 on Robinhood Chain.');
+  const name = decStr(nameRaw) || '';
+  const vault = addrOf(vaultRaw);
+  const registered = vault && !/^0x0+$/.test(vault);
+
+  /* our own list, for delegated tokens */
+  let reg = { delegated: [], images: {} };
+  try { reg = await fetch('/tokens.json').then((r) => r.json()); } catch (e) {}
+  const delegated = (reg.delegated || []).find((d) => (d.token || '').toLowerCase() === token);
+
+  /* Artwork straight from the chain: tokenURI() -> ipfs JSON -> image_hash.
+     Both hops go through our /ipfs relay, so no CORS and a year of caching. */
+  let image = (reg.images || {})[token], desc = null, socials = [];
+  try {
+    /* Either scheme resolves: long.xyz writes ipfs://, we write an https:// URL
+       on this domain. Anything else is ignored rather than fetched, so a token
+       cannot make this page load from a host of its choosing. */
+    const resolveUri = (u) => {
+      if (typeof u !== 'string') return null;
+      if (u.startsWith('ipfs://')) return '/ipfs/' + u.slice(7);
+      if (u.startsWith('https://flowetf.xyz/')) return u.slice('https://flowetf.xyz'.length);
+      return null;
+    };
+    const metaUrl = resolveUri(decStr(uriRaw));
+    if (metaUrl) {
+      const meta = await fetch(metaUrl).then((r) => r.json());
+      desc = typeof meta.description === 'string' ? meta.description : null;
+      const ih = resolveUri(meta.image_hash || meta.image);
+      if (!image && ih) image = ih;
+      if (Array.isArray(meta.social_links)) socials = meta.social_links
+        .filter((l) => l && typeof l.url === 'string' && /^https?:\/\//.test(l.url))
+        .slice(0, 5);
+    }
+  } catch (e) {}
+
+  /* the actual fee split, straight from long.xyz */
+  const ben = [];
+  if (benRaw && benRaw !== '0x') {
+    const h = benRaw.slice(2);
+    const n = parseInt(h.substr(64, 64), 16) || 0;
+    for (let i = 0; i < n; i++) {
+      ben.push({ addr: '0x' + h.substr((2 + i * 2) * 64 + 24, 40),
+                 share: Number(BigInt('0x' + h.substr((3 + i * 2) * 64, 64))) / 1e18 });
+    }
+  }
+  ben.sort((a, b) => b.share - a.share);
+
+  /* vault state, only when there is one */
+  let anchorSym = null, creator = null, minPot = null, interval = null, cycles = null;
+  let lastCollect = null, lastDist = null, initHash = null, fees = null, dist = null;
+  let stockForSym = null;
+  if (registered) {
+    const [stockRaw, creatorRaw, potRaw, intRaw, cycRaw, collRaw, distRaw,
+           opRaw, capRaw, spentRaw, minHoldRaw] = await Promise.all([
+      call(vault, sel('stockToken()')).catch(() => null),
+      call(vault, sel('creator()')).catch(() => null),
+      call(vault, sel('minPotUsd()')).catch(() => null),
+      call(vault, sel('cycleInterval()')).catch(() => null),
+      call(vault, sel('cycleId()')).catch(() => null),
+      // The contract gates the next cycle on lastCollectAt + cycleInterval, not
+      // on a wall clock, so every token runs to its own schedule. Reading the
+      // real field is the only way this page can be right about any of them.
+      call(vault, sel('lastCollectAt()')).catch(() => null),
+      call(vault, sel('lastDistributionAt()')).catch(() => null),
+      call(vault, sel('operator()')).catch(() => null),
+      call(vault, sel('cycleCap()')).catch(() => null),
+      call(vault, sel('cycleSpent()')).catch(() => null),
+      call(vault, sel('minHolding()')).catch(() => null),
+    ]);
+    // Pinned in the factory, which IS verified on the explorer — so this number
+    // can be checked there and then reproduced from the source below.
+    initHash = initRaw;
+
+    /* ── fees ──
+       What long.xyz owes this vault is (cumulated − last collected) × its share.
+       Which leg is the stock depends on address ordering, not on which token is
+       "ours", so it is derived rather than assumed — getting it backwards would
+       report the meme balance as the payout. */
+    const stockAddr = addrOf(stockRaw);
+    if (stockAddr && !/^0x0+$/.test(stockAddr)) {
+      try {
+        const st = stateRaw;
+        if (!st || st.length < 700) throw new Error('no pool state');
+        const w = (i) => st.slice(2).substr(i * 64, 64);
+        const c0 = '0x' + w(5).slice(24), c1 = '0x' + w(6).slice(24);
+        const poolId = keccakAbi(c0, c1, parseInt(w(7), 16), parseInt(w(8), 16), '0x' + w(9).slice(24));
+        const stockIs0 = stockAddr.toLowerCase() === c0.toLowerCase();
+        const n = stockIs0 ? '0' : '1';
+        /* Uncollected fees come from SIMULATING the collect, not from
+           getCumulatedFees. That counter only advances when a collect actually
+           executes, so for a pool nobody has collected from yet it reads zero
+           while real fees sit waiting — which is exactly what this page showed
+           after a day of trading. eth_call runs the collect without committing
+           it and returns what would come out.
+
+           The returned pair is the POOL's total, identical for every caller —
+           checked by simulating as the vault, as long.xyz and as an unrelated
+           address, all three giving the same number. Our slice is that total
+           times our share. */
+        const [collectRaw, shareRaw, heldRaw, burnRaw, symOfStock] = await Promise.all([
+          call(HOOK, sel('collectFees(bytes32)') + poolId.slice(2)).catch(() => null),
+          call(HOOK, sel('getShares(bytes32,address)') + poolId.slice(2) + pad(vault)).catch(() => null),
+          call(stockAddr, sel('balanceOf(address)') + pad(vault)).catch(() => null),
+          call(token, sel('balanceOf(address)') + pad('0x000000000000000000000000000000000000dEaD')).catch(() => null),
+          // Rides along here rather than costing its own round trip.
+          call(stockAddr, sel('symbol()')).catch(() => null),
+        ]);
+        if (!anchorSym) anchorSym = decStr(symOfStock);
+        let poolStock = 0n, poolMeme = 0n;
+        if (collectRaw && collectRaw.length >= 130) {
+          const a0 = BigInt('0x' + collectRaw.slice(2).substr(0, 64));
+          const a1 = BigInt('0x' + collectRaw.slice(2).substr(64, 64));
+          poolStock = stockIs0 ? a0 : a1;
+          poolMeme = stockIs0 ? a1 : a0;
+        }
+        const share = num(shareRaw) ?? 0n;
+        const cut = (v) => (share ? (v * share) / 1000000000000000000n : v);
+        fees = {
+          pending: cut(poolStock),
+          pendingMeme: cut(poolMeme),
+          held: num(heldRaw) ?? 0n,
+          burned: num(burnRaw) ?? 0n,
+          sharePct: share ? Number(share) / 1e16 : null,
+        };
+      } catch (e) { /* the rest of the page does not depend on this */ }
+    }
+    const stock = addrOf(stockRaw);
+    // Resolved below, together with the fee reads, so it costs no extra round.
+    stockForSym = stock;
+    creator = addrOf(creatorRaw);
+    minPot = num(potRaw); interval = num(intRaw); cycles = num(cycRaw);
+    lastCollect = num(collRaw); lastDist = num(distRaw);
+    dist = { operator: addrOf(opRaw), cap: num(capRaw), spent: num(spentRaw),
+             minHolding: num(minHoldRaw), vault };
+  } else if (delegated) {
+    anchorSym = delegated.anchor;
+  }
+  /* Any long.xyz token has an anchor, whether or not it distributes through us.
+     Leaving it blank on those pages would look like missing data rather than a
+     deliberate limit, so read it from getState() regardless. */
+  if (!anchorSym) {
+    // Only reached for tokens with no vault of ours, where the round above never ran.
+    try {
+      const numAddr = addrOf(stateRaw);
+      if (numAddr && !/^0x0+$/.test(numAddr)) {
+        anchorSym = decStr(await call(numAddr, sel('symbol()')).catch(() => null));
+      }
+    } catch (e) {}
+  }
+
+  const cls = registered ? 'lock' : (delegated ? 'del' : 'none');
+  const badge = registered
+    ? '<span class="badge b-lock">LOCKED — FEE STREAM CANNOT BE WITHDRAWN</span>'
+    : delegated
+      ? '<span class="badge b-del">DELEGATED — THE TEAM CAN WITHDRAW THIS AT ANY TIME</span>'
+      : '<span class="badge b-none">NOT ON FLOWETF</span>';
+
+  const mark = image
+    ? `<img class="mark" src="${esc(image)}" alt="">`
+    : `<span class="mark" style="${identicon(token, 20)}">${esc(symbol.slice(0, 2).toUpperCase())}</span>`;
+
+  let html = `<div class="hero">${mark}
+    <div><h1>$${esc(symbol)}</h1>
+      <div class="sub">${esc(name)}</div>${badge}</div></div>`;
+  if (desc) html += `<p style="margin-top:16px;max-width:62ch">${esc(desc)}</p>`;
+
+  html += `<div class="ca">
+    <div class="ca-h"><span class="lab">Contract address</span><span class="lab" style="color:var(--faint)">tap to copy</span></div>
+    <button class="ca-v" data-copy="${esc(token)}" title="Copy ${esc(token)}">${esc(token)}</button>
+  </div>`;
+
+  /* Sits directly under the address rather than at the foot of the page: these
+     are the things a visitor came to do, and burying them below every panel
+     meant scrolling past the whole page to reach them. */
+  html += `<div class="links">
+    ${socials.map((l) => `<a class="btn" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc((l.type || 'link').toUpperCase())} ↗</a>`).join('')}
+    <a class="btn btn-p" href="${LONG_TOKEN_URL(token)}" target="_blank" rel="noopener">Trade on long.xyz ↗</a>
+    <a class="btn" href="${EXPLORER}/address/${token}" target="_blank" rel="noopener">Explorer ↗</a>
+    ${registered ? `<a class="btn" href="${EXPLORER}/address/${vault}" target="_blank" rel="noopener">Vault ↗</a>` : ''}
+  </div>`;
+
+  // The cycle clock is what people come back to check, so it sits with the
+  // address and the actions instead of below every panel on the page.
+  if (registered) {
+    /* Motion belongs here only when there is something moving. With no cycle
+       ever run there is no deadline, so the ring goes dashed and still rather
+       than spinning to look busy. */
+    const idle = !(lastCollect && Number(lastCollect) > 0);
+    html += `<div class="cyc${idle ? ' idle' : ''}">
+      <svg width="92" height="92" viewBox="0 0 92 92" aria-hidden="true">
+        <circle class="trk" cx="46" cy="46" r="40"></circle>
+        <circle class="arc" id="cycarc" cx="46" cy="46" r="40"></circle>
+      </svg>
+      <div class="txt">
+        <span class="lab">${idle ? 'First cycle' : 'Next cycle in'}</span>
+        <span class="big" id="cycbig">${idle ? 'ready when called' : '…'}</span>
+        <div class="sub2">${idle
+          ? 'Nothing has run yet, so there is no countdown to show.'
+          : `Every ${interval ? Number(interval) / 3600 : 6}h. Opening one still needs the pot above the threshold.`}</div>
+      </div>
+    </div>`;
+
+    if (fees) {
+      /* Amounts are shown in the token they are actually paid in. A single
+         "total earned" figure would need every Distributed event since launch,
+         and this chain caps a log query at 100 blocks — so rather than print a
+         number we cannot stand behind, the page shows the positions that ARE
+         readable and says plainly what it does not track. */
+      /* Decimals scale with size. Six places on a seven-figure balance produced
+         a number too long for the row, which then broke mid-digit — and half a
+         number is worse than a rounded one. */
+      const amt = (v, sym) => {
+        if (v <= 0n) return `0 ${esc(sym)}`;
+        const n = Number(v) / 1e18;
+        const dp = n >= 10000 ? 0 : n >= 1 ? 2 : 6;
+        return `${n.toLocaleString(undefined, { maximumFractionDigits: dp })} ${esc(sym)}`;
+      };
+      html += `<div class="panel"><div class="panel-h"><span class="lab">Fees</span>` +
+        (fees.sharePct !== null ? `<span class="lab" style="color:var(--faint)">${fees.sharePct.toFixed(1)}% of the pool</span>` : '') +
+        `</div><div class="panel-b">`;
+      html += led('Unclaimed — still in the pool', amt(fees.pending, anchorSym || 'anchor'),
+                  fees.pending > 0n ? 'v-set' : 'v-mut');
+      html += led('Unclaimed — meme leg', amt(fees.pendingMeme, symbol),
+                  fees.pendingMeme > 0n ? 'v-set' : 'v-mut');
+      html += led('Claimed — held by the vault', amt(fees.held, anchorSym || 'anchor'),
+                  fees.held > 0n ? 'v-sig' : 'v-mut');
+      html += led('Burned so far', amt(fees.burned, symbol), fees.burned > 0n ? 'v-set' : 'v-mut');
+      html += `</div></div>
+        <div class="note"><p>Unclaimed is what long.xyz has accrued for this vault but not paid out yet;
+        claimed is what the vault already holds, waiting for a cycle to send it on. The unclaimed
+        figures come from simulating the collect against long.xyz right now, so they move as people
+        trade. The meme leg is half burned at the next cycle; the anchor leg is what reaches
+        holders.</p></div>`;
+    }
+
+    /* The contract makes distribute() operator-only, so this can never be a
+       button for everyone — a public one would revert for every visitor. It is
+       shown to all so the mechanism is visible, and it says plainly which of the
+       conditions is not met rather than sitting greyed out with no reason. */
+  }
+
+
+  html += `<div class="panel"><div class="panel-h"><span class="lab">Fee split, read from long.xyz</span></div><div class="panel-b">`;
+  if (!ben.length) {
+    html += led('Beneficiaries', 'none found', 'v-mut');
+  } else {
+    ben.forEach((b, i) => {
+      const mine = registered && b.addr.toLowerCase() === vault.toLowerCase();
+      html += led(i === 0 ? 'Creator share' : 'Launchpad',
+        `${copyable(b.addr)} ${(b.share * 100).toFixed(1)}%${mine ? ' ← this vault' : ''}`,
+        mine ? 'v-sig' : 'v-mut');
+    });
+  }
+  html += `</div></div>`;
+
+  html += `<div class="panel"><div class="panel-h"><span class="lab">Distribution</span></div><div class="panel-b">`;
+  html += led('Anchored to', anchorSym ? esc(anchorSym) : '—', 'v-set');
+  if (registered) {
+    html += led('Vault', copyable(vault), 'v-sig');
+    html += led('Cycle', interval ? 'every ' + (Number(interval) / 3600) + 'h' : '—', '');
+    /* Live, and specific to this token. `lastCollectAt` of 0 means no cycle has
+       ever run, in which case the first one can begin at any moment — showing a
+       countdown there would invent a deadline that does not exist. */
+    html += led('Next cycle', lastCollect !== null && Number(lastCollect) > 0
+      ? `<span id="cdv">…</span>`
+      : 'any time — none run yet', 'v-set');
+    /* lastDistributionAt is seeded at initialize() to start the deferral clock,
+       so it is non-zero from the moment a vault exists and printing it as
+       "last cycle" claims a distribution that never happened. cycleId is the
+       only field that says whether one actually ran. */
+    html += led('Cycles opened', cycles !== null ? String(cycles) : '—', '');
+    html += led('Last cycle', cycles !== null && Number(cycles) > 0
+      ? `<span id="lastv">…</span>` : 'none yet', 'v-mut');
+    html += led('Payout threshold', minPot !== null ? '$' + (Number(minPot) / 1e18).toLocaleString() : '—', 'v-set');
+    if (creator && !/^0x0+$/.test(creator)) html += led('Creator', copyable(creator), 'v-mut');
+  } else if (delegated) {
+    html += led('Arrangement', 'manual, off-chain', 'v-set');
+    html += led('Since', esc(delegated.since || '—'), 'v-mut');
+  } else {
+    html += led('Status', 'not on FLOWETF', 'v-mut');
+  }
+  html += `</div></div>`;
+
+  html += registered
+    ? `<div class="note lock"><p>This vault was named as the fee recipient when the token launched,
+       and long.xyz records that permanently. The vault has no function that can move it, so the
+       stream reaches holders whether or not anyone keeps their word.</p></div>`
+    : delegated
+      ? `<div class="note"><p>The team routes this fee stream to FLOWETF voluntarily. Payouts work
+         exactly the same day to day, but the arrangement is not enforced by the chain and can be
+         ended at any time — which is why this card is not marked locked.</p></div>`
+      : `<div class="note"><p>This token is not distributing through FLOWETF. Nothing here is
+         claiming otherwise; the page simply shows what the chain says.</p></div>`;
+
+  if (registered) {
+    /* The explorer cannot verify a vault: it never recorded the CREATE2 that
+       created it, so it does not treat the address as a contract at all. That
+       is their indexer, not our contract — but "trust us" is not an answer, so
+       here is the chain anyone can walk instead, ending at a number published
+       by the factory, which the explorer HAS verified. */
+    /* No button. Payouts run on a schedule and send themselves, so there is
+       nothing for a holder to press — and a control only one address could ever
+       use was clutter dressed as a feature. What belongs here is the state of
+       the automation, so anyone can see it is alive and what it will do next. */
+    html += `<div class="panel"><div class="panel-h"><span class="lab">Payouts</span>
+      <span class="lab" id="dstat" style="color:var(--faint)">reading…</span></div>
+      <div class="panel-b">
+        <div id="dinfo"></div>
+        <p class="hint" id="dhint" style="margin-top:12px">Sent automatically. Nothing to claim, nothing to press.</p>
+      </div></div>`;
+
+    html += `<div class="panel"><div class="panel-h"><span class="lab">Source &amp; how to check it</span></div><div class="panel-b">`;
+    html += led('Compiler', 'solc 0.8.36 · optimizer on · 200 runs', 'v-mut');
+    html += led('Source file', '<code>S.sol</code>', 'v-mut');
+    if (initHash && initHash !== '0x') html += led('Init code hash', copyable(initHash, short(initHash)), 'v-sig');
+    html += `</div></div>
+      <div class="note"><p>Compile <a href="/src/StockFeeDistributor.sol" target="_blank" rel="noopener">the vault source</a>
+      with those settings, under the file name <code>S.sol</code>, and hash the init code. It equals the value above,
+      which the <a href="${EXPLORER}/address/${FACTORY}#code" target="_blank" rel="noopener">verified factory</a>
+      pins and cannot change. The factory only deploys that one bytecode, so the vault at
+      <code>${short(vault)}</code> can be nothing else. The file name matters: it is part of the metadata hash.</p></div>`;
+  }
+
+  root.innerHTML = html;
+  document.title = `$${symbol} — FLOWETF`;
+  startClock(lastCollect, lastDist, interval);
+  if (dist) setupPayouts(dist, symbol, anchorSym);
+}
+
+/* ══════════════ per-token cycle clock ══════════════
+   Each vault gates its next cycle on lastCollectAt + cycleInterval, so this
+   countdown belongs to this token alone — the ring on the home page is the
+   platform's settlement window, not any single token's schedule.
+
+   Once the gate passes, a cycle becomes ELIGIBLE rather than automatic: the
+   operator still has to call it, and it can be skipped when the pot is under
+   the threshold. Saying "due now" would promise something the contract does
+   not. */
+let clockTimer = null;
+function startClock(lastCollect, lastDist, interval) {
+  clearInterval(clockTimer);
+  const cdv = document.getElementById('cdv');
+  const lastv = document.getElementById('lastv');
+  const big = document.getElementById('cycbig');
+  const arc = document.getElementById('cycarc');
+  const C = 2 * Math.PI * 40;
+  if (arc) arc.style.strokeDasharray = C;
+
+  if (lastv && lastDist !== null && Number(lastDist) > 0) {   // only rendered when a cycle really ran
+    const d = new Date(Number(lastDist) * 1000);
+    lastv.textContent = d.toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+    lastv.title = d.toString();
+  }
+  if (lastCollect === null || !Number(lastCollect) || !interval) return;
+
+  const due = Number(lastCollect) + Number(interval);
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const span = Number(interval);
+  const tick = () => {
+    const left = due - Math.floor(Date.now() / 1000);
+    if (left <= 0) {
+      if (cdv) cdv.textContent = 'eligible now';
+      if (big) big.textContent = 'eligible now';
+      if (arc) arc.style.strokeDashoffset = 0;
+      clearInterval(clockTimer);
+      return;
+    }
+    const h = Math.floor(left / 3600), m = Math.floor(left / 60) % 60, sec = left % 60;
+    const txt = `${pad2(h)}:${pad2(m)}:${pad2(sec)}`;
+    if (cdv) { cdv.textContent = txt;
+      cdv.title = 'Earliest next cycle: ' + new Date(due * 1000).toISOString().slice(0, 16).replace('T', ' ') + ' UTC'; }
+    if (big) big.textContent = txt;
+    // fills as the interval runs down, so the ring reads as progress not decoration
+    if (arc) arc.style.strokeDashoffset = C * (left / span);
+  };
+  tick();
+  clockTimer = setInterval(tick, 1000);
+}
+
+/* ══════════════ payout status ══════════════
+   Read-only. distribute() is operator-only on chain and a scheduled job calls
+   it, so this reports what the automation will do rather than offering a
+   control nobody reading the page could use.
+
+   The snapshot is the one our indexer publishes, and it only ships after the
+   balances summed to totalSupply — a list that does not add up never reaches
+   this page. */
+async function setupPayouts(dist, symbol, anchorSym) {
+  const stat = document.getElementById('dstat');
+  const info = document.getElementById('dinfo');
+  const hint = document.getElementById('dhint');
+  if (!info) return;
+
+  const row = (k, v) => `<div class="drow"><span>${k}</span><b>${v}</b></div>`;
+  const fmt = (v) => (Number(v) / 1e18).toLocaleString(undefined, { maximumFractionDigits: 4 });
+
+  const snap = await fetch(`/holders/${token}.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const remaining = dist.cap > dist.spent ? dist.cap - dist.spent : 0n;
+
+  const eligible = (snap ? snap.holders : [])
+    .map(([a, v]) => [a, BigInt(v)])
+    .filter(([, v]) => v >= dist.minHolding);
+  const totalHeld = eligible.reduce((t, [, v]) => t + v, 0n);
+  /* Shares that round to zero cannot be sent, so they are not counted as
+     recipients here either — a number on screen that the payout would not
+     match is a small lie that makes the big numbers look doubtful too. */
+  const payable = totalHeld > 0n
+    ? eligible.map(([a, v]) => [a, (remaining * v) / totalHeld]).filter(([, amt]) => amt > 0n)
+    : [];
+
+  info.innerHTML =
+    row('Holders in the snapshot', snap ? snap.holders.length : '—') +
+    row('Snapshot block', snap ? snap.block.toLocaleString() : '—') +
+    row('This cycle pays', remaining > 0n
+      ? `${fmt(remaining)} ${esc(anchorSym || '')} to ${payable.length}`
+      : 'nothing yet');
+
+  if (remaining > 0n) {
+    stat.textContent = 'PAYING';
+    stat.style.color = 'var(--signal)';
+    hint.textContent = `${payable.length} holders, pro rata, sent automatically. Nothing to claim, nothing to press.`;
+  } else {
+    stat.textContent = 'WAITING';
+    hint.textContent = 'A cycle opens once the pot clears the threshold, then the payout sends itself. Nothing to claim, nothing to press.';
+  }
+}
+
+/* ══════════════ copy ══════════════
+   Delegated, so it covers addresses rendered long after load.
+
+   navigator.clipboard is unavailable in plenty of in-app wallet browsers, and
+   silently doing nothing there would be worse than not offering the button at
+   all — hence the textarea fallback and the honest failure message. */
+const toast = document.createElement('div');
+toast.className = 'copied';
+toast.setAttribute('role', 'status');
+document.body.appendChild(toast);
+let toastTimer = null;
+function flash(msg) {
+  toast.textContent = msg;
+  toast.classList.add('on');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('on'), 1400);
+}
+
+function legacyCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+  document.body.appendChild(ta);
+  ta.select();
+  ta.setSelectionRange(0, text.length);          // iOS ignores select() alone
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch { ok = false; }
+  ta.remove();
+  return ok;
+}
+
+async function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    try { await navigator.clipboard.writeText(text); return true; } catch { /* fall through */ }
+  }
+  return legacyCopy(text);
+}
+
+async function handleCopy(el) {
+  const text = el.getAttribute('data-copy');
+  if (!text) return;
+  flash(await copyText(text) ? 'Copied ' + short(text) : 'Press and hold to copy');
+}
+
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-copy]');
+  if (el) handleCopy(el);
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const el = e.target.closest && e.target.closest('[data-copy]');
+  if (el) { e.preventDefault(); handleCopy(el); }
+});
+</script>
+</body>
+</html>

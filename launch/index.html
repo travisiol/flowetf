@@ -1,0 +1,872 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Launch a token — FLOWETF</title>
+<meta name="description" content="Launch on long.xyz with your fee stream already locked to a FLOWETF vault, so holders are paid from the first cycle.">
+<meta name="theme-color" content="#060C09">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23060C09'/><path d='M9 8v16h8' stroke='%23C8FF00' stroke-width='3.2' fill='none' stroke-linecap='square'/><circle cx='22' cy='11' r='2.6' fill='%23F5B841'/></svg>">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#060C09; --paper:#0B1410; --paper2:#101C16;
+  --rule:#18291F; --rule2:#23392D;
+  --signal:#C8FF00; --settle:#F5B841; --bad:#FF6F5E;
+  --text:#E8F0EA; --muted:#7A8C82; --faint:#4A5A51;
+  --display:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --gut:20px;
+}
+@media(min-width:820px){:root{--gut:40px}}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--ink);color:var(--text);font-family:var(--display);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+.wrap{max-width:760px;margin:0 auto;padding:0 var(--gut)}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--signal);outline-offset:3px;border-radius:2px}
+h1{font-size:clamp(1.8rem,6vw,2.6rem);font-weight:800;letter-spacing:-.035em;line-height:1.08;text-wrap:balance}
+p{color:var(--muted)}
+.lab{font-family:var(--mono);font-size:.67rem;font-weight:600;letter-spacing:.19em;text-transform:uppercase;color:var(--faint)}
+.lab.on{color:var(--signal)}
+code{font-family:var(--mono);font-size:.86em;color:var(--signal);word-break:break-all}
+strong{color:var(--text);font-weight:700}
+
+header{position:sticky;top:0;z-index:60;background:rgba(6,12,9,.97);backdrop-filter:blur(12px);border-bottom:1px solid var(--rule)}
+.hd{display:flex;align-items:center;justify-content:space-between;gap:12px;height:58px}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--signal);flex:none}
+
+/* Brand: the coin mark plus the wordmark.
+   Drawn as inline SVG rather than the 84KB PNG the token uses. In a header it
+   has to be sharp at 30px and present on the first paint, and a network request
+   for a logo is a request that can arrive late or not at all. */
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.brand .mk{width:30px;height:30px;flex:none;display:block;transition:transform .35s cubic-bezier(.2,.9,.3,1.2)}
+.brand:hover .mk{transform:rotate(-28deg)}
+.brand .wm{font-weight:800;letter-spacing:-.045em;font-size:1.32rem;line-height:1;color:var(--text)}
+.brand .wm .s{color:var(--settle)}
+@media(min-width:820px){.brand .mk{width:34px;height:34px}.brand .wm{font-size:1.5rem}}
+@media(prefers-reduced-motion:reduce){.brand .mk{transition:none}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:700;font-size:.92rem;padding:12px 20px;min-height:42px;border-radius:3px;text-decoration:none;cursor:pointer;border:1px solid transparent;font-family:var(--display);transition:background .15s,border-color .15s,color .15s,opacity .15s}
+.btn-p{background:var(--signal);color:#0A1000}
+.btn-p:hover:not(:disabled){background:#d9ff3d}
+.btn-s{border-color:var(--rule2);color:var(--text);background:transparent}
+.btn-s:hover:not(:disabled){border-color:var(--signal);color:var(--signal)}
+.btn-sm{padding:8px 14px;font-size:.82rem;min-height:42px}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+/* Wallet panel, the same shape as the home page. This page had a connect button
+   and no way back out: clicking it while connected simply called
+   eth_requestAccounts again, so the only way to disconnect was closing the tab. */
+.wal{position:relative}
+.wpop{position:absolute;right:0;top:calc(100% + 10px);width:246px;background:var(--paper2);
+  border:1px solid var(--rule2);border-radius:5px;padding:12px;z-index:70;
+  box-shadow:0 18px 40px -18px rgba(0,0,0,.9);
+  transform-origin:top right;opacity:0;transform:translateY(-6px) scale(.97);
+  transition:opacity .16s ease,transform .16s cubic-bezier(.2,.9,.3,1.2)}
+.wpop.open{opacity:1;transform:none}
+.wpop-h{display:flex;align-items:center;gap:8px;padding-bottom:9px;border-bottom:1px solid var(--rule)}
+.wpop-a{display:block;width:100%;text-align:left;background:none;border:0;padding:10px 0 8px;cursor:pointer;
+  font-family:var(--mono);font-size:.76rem;color:var(--text);line-height:1.5;overflow-wrap:anywhere}
+.wpop-a:hover{color:var(--signal)}
+.wpop-b{display:flex;justify-content:space-between;gap:10px;font-size:.8rem;color:var(--muted);padding-bottom:11px}
+.wpop-b b{font-family:var(--mono);color:var(--settle);font-weight:700}
+.wdc{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:40px;cursor:pointer;
+  background:none;border:1px solid var(--rule2);border-radius:3px;color:var(--muted);
+  font-family:inherit;font-weight:700;font-size:.83rem;transition:color .15s,border-color .15s,background .15s}
+.wdc svg{width:16px;height:16px;flex:none;transition:transform .2s}
+.wdc:hover{color:var(--bad);border-color:var(--bad);background:rgba(255,111,94,.07)}
+.wdc:hover svg{transform:translateX(2px)}
+#cx.on{position:relative;padding-left:26px}
+#cx.on::before{content:"";position:absolute;left:12px;top:50%;margin-top:-3px;width:6px;height:6px;border-radius:50%;background:#0A1000}
+@media(prefers-reduced-motion:reduce){.wpop{transition:none}.wdc svg{transition:none}}
+
+main{padding:40px 0 80px}
+.intro{margin-bottom:34px}
+.intro p{margin-top:14px;max-width:60ch}
+
+/* ---------- steps ---------- */
+.step{border:1px solid var(--rule);border-radius:5px;margin-bottom:14px;background:var(--paper);overflow:hidden}
+.step[data-state="done"]{border-color:#2A4A34}
+.step[data-state="active"]{border-color:var(--rule2)}
+.step-h{display:flex;align-items:center;gap:12px;padding:15px 18px;border-bottom:1px solid var(--rule)}
+.step-n{font-family:var(--mono);font-size:.75rem;font-weight:700;width:26px;height:26px;border-radius:50%;display:grid;place-content:center;flex:none;border:1px solid var(--rule2);color:var(--faint)}
+.step[data-state="active"] .step-n{border-color:var(--signal);color:var(--signal)}
+.step[data-state="done"] .step-n{background:var(--signal);border-color:var(--signal);color:#0A1000}
+.step-t{font-weight:700;font-size:.98rem;flex:1}
+.step-s{font-family:var(--mono);font-size:.7rem;color:var(--faint);letter-spacing:.08em}
+.step-b{padding:18px}
+.step[data-state="idle"] .step-b{display:none}
+
+label{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:7px}
+input,select{width:100%;background:#040806;border:1px solid var(--rule2);border-radius:3px;color:var(--text);font-family:var(--mono);font-size:.88rem;padding:12px 13px}
+input::placeholder{color:var(--faint)}
+input:focus,select:focus{outline:none;border-color:var(--signal)}
+.field{margin-bottom:16px}
+.hint{font-family:var(--mono);font-size:.71rem;color:var(--faint);margin-top:7px;line-height:1.55}
+.hint.ok{color:var(--signal)}
+.hint.no{color:var(--bad)}
+.row2{display:grid;gap:16px}
+@media(min-width:620px){.row2{grid-template-columns:1fr 1fr}}
+
+.alist{margin-top:9px;max-height:240px;overflow-y:auto;border:1px solid var(--rule);border-radius:3px;background:#040806}
+.arow{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:9px 12px;background:transparent;border:0;border-bottom:1px solid var(--rule);cursor:pointer;text-align:left;color:var(--muted);font-family:var(--display)}
+.arow:last-child{border-bottom:0}
+.arow:hover{background:rgba(200,255,0,.05)}
+.arow[aria-pressed="true"]{background:rgba(200,255,0,.09)}
+.arow[aria-pressed="true"] .asym{color:var(--signal)}
+.asym{font-family:var(--mono);font-size:.8rem;font-weight:700;color:var(--text);flex:none;min-width:74px}
+.aname{font-size:.82rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ause{font-family:var(--mono);font-size:.68rem;color:var(--faint);flex:none}
+.ahint{padding:14px 12px;font-family:var(--mono);font-size:.74rem;color:var(--faint)}
+textarea{width:100%;background:#040806;border:1px solid var(--rule2);border-radius:3px;color:var(--text);
+  font-family:var(--display);font-size:.92rem;padding:11px 13px;resize:vertical;min-height:76px}
+textarea:focus{outline:none;border-color:var(--signal)}
+.opt{font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;color:var(--faint);margin-left:6px}
+
+/* The image control is a drop zone rather than a bare file input: on a phone the
+   whole card is the tap target, and the preview replaces guesswork about
+   whether the right file was picked. */
+.drop{border:1px dashed var(--rule2);border-radius:4px;min-height:104px;display:grid;place-items:center;
+  gap:6px;padding:16px;cursor:pointer;text-align:center;transition:border-color .16s,background .16s}
+.drop:hover,.drop.over{border-color:var(--signal);background:rgba(200,255,0,.04)}
+.drop strong{display:block;font-size:.92rem;color:var(--text)}
+.drop span{font-family:var(--mono);font-size:.7rem;color:var(--faint)}
+.drop img{max-width:96px;max-height:96px;border-radius:8px;object-fit:cover;border:1px solid var(--rule2)}
+.drop.busy{opacity:.55;pointer-events:none}
+
+.more{border:1px solid var(--rule);border-radius:4px;padding:0 14px;margin-bottom:16px}
+.more summary{padding:13px 0;cursor:pointer;font-weight:700;font-size:.9rem;list-style:none}
+.more summary::-webkit-details-marker{display:none}
+.more summary::after{content:"+";float:right;color:var(--signal);font-family:var(--mono)}
+.more[open] summary::after{content:"–"}
+.more[open]{padding-bottom:2px}
+
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+/* 40px minimum: these are the primary way an anchor gets picked on a phone,
+   and at 27px they were a mis-tap waiting to happen. Measured, not guessed. */
+.chip{font-family:var(--mono);font-size:.72rem;padding:6px 12px;min-height:40px;display:inline-flex;align-items:center;border:1px solid var(--rule2);border-radius:3px;background:transparent;color:var(--muted);cursor:pointer}
+.chip:hover{border-color:var(--signal);color:var(--signal)}
+.chip[aria-pressed="true"]{border-color:var(--signal);color:var(--signal);background:rgba(200,255,0,.06)}
+
+.led{display:flex;align-items:baseline;gap:8px;padding:10px 0;border-bottom:1px solid var(--rule)}
+.led:last-child{border-bottom:0}
+.led .k{font-size:.88rem;color:var(--muted);flex:none;max-width:58%}
+.led .d{flex:1;border-bottom:1px dotted var(--rule2);transform:translateY(-4px);min-width:10px}
+.led .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:.84rem;font-weight:700;flex:none;text-align:right;word-break:break-all}
+.v-set{color:var(--settle)} .v-sig{color:var(--signal)} .v-mut{color:var(--faint)} .v-bad{color:var(--bad)}
+
+.note{border:1px solid var(--rule2);border-left:2px solid var(--settle);border-radius:3px;padding:13px 15px;margin-top:16px}
+.note p{font-size:.87rem;color:var(--muted)}
+.note.bad{border-left-color:var(--bad)}
+.acts{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid var(--rule2);border-top-color:var(--signal);border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.spin{animation:none}}
+.log{font-family:var(--mono);font-size:.75rem;color:var(--muted);margin-top:14px;padding-top:12px;border-top:1px solid var(--rule);line-height:1.8;word-break:break-all}
+.log a{color:var(--signal)}
+footer{border-top:1px solid var(--rule);padding:26px 0 44px}
+.fine{font-size:.76rem;color:var(--faint);line-height:1.65;max-width:70ch}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap hd">
+    <a class="brand" href="/">
+      <svg class="mk" viewBox="0 0 40 40" aria-hidden="true">
+        <g fill="none" stroke-linecap="round" stroke-width="4.6">
+          <path stroke="var(--settle)" d="M21.71 6.10A14 14 0 0 1 33.90 18.29"/>
+          <path stroke="var(--signal)" d="M33.90 21.71A14 14 0 0 1 21.71 33.90"/>
+          <path stroke="var(--signal)" d="M18.29 33.90A14 14 0 0 1 6.10 21.71"/>
+          <path stroke="var(--signal)" d="M6.10 18.29A14 14 0 0 1 18.29 6.10"/>
+        </g>
+        <polyline fill="none" stroke="#E8F0EA" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"
+                  points="13.73,24.93 17.98,22.15 22.02,23.67 27.17,16.19"/>
+        <circle cx="27.17" cy="16.19" r="2.1" fill="var(--settle)"/>
+      </svg>
+      <span class="wm">FLOW<span class="s">ETF</span></span>
+    </a>
+    <span style="display:flex;gap:8px;align-items:center">
+      <a class="btn btn-sm" href="/docs">Docs</a>
+      <div class="wal">
+        <button class="btn btn-p btn-sm" id="cx">Connect wallet</button>
+        <div class="wpop" id="wpop" hidden>
+          <div class="wpop-h"><i class="dot"></i><span class="lab">Connected</span></div>
+          <button class="wpop-a" id="wcopy" type="button" title="Copy address"><span id="wfull">…</span></button>
+          <div class="wpop-b"><span>Balance</span><b id="wbal">…</b></div>
+          <button class="wdc" id="wdc" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M15 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-2M10 12h11m0 0-3-3m3 3-3 3"/></svg>
+            Disconnect
+          </button>
+        </div>
+      </div>
+    </span>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="intro">
+      <span class="lab on">Launch</span>
+      <h1>Launch with the fee stream already locked.</h1>
+      <p>
+        Your token is created by long.xyz exactly as it would be otherwise. The one
+        difference is that the fee recipient recorded at launch is a vault you can never
+        withdraw from — so holders are paid from the first cycle, and nobody has to take
+        your word for it.
+      </p>
+    </div>
+
+    <!-- ─── 1 ─── -->
+    <section class="step" id="s1" data-state="active">
+      <div class="step-h"><span class="step-n">1</span><span class="step-t">Token details</span><span class="step-s" id="s1s"></span></div>
+      <div class="step-b">
+        <div class="row2">
+          <div class="field">
+            <label for="f-name">Name</label>
+            <input id="f-name" placeholder="artificial inu" maxlength="32" autocomplete="off" spellcheck="false">
+            <div class="hint" id="h-name">Up to 32 characters.</div>
+          </div>
+          <div class="field">
+            <label for="f-sym">Ticker</label>
+            <input id="f-sym" placeholder="FLOWETF" maxlength="32" autocomplete="off" spellcheck="false">
+            <div class="hint" id="h-sym">Letters only — digits, spaces and dashes are rejected on-chain.</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="f-anchor">Anchored to</label>
+          <input id="f-anchor" placeholder="0x… the token your pool is paired against" autocomplete="off" spellcheck="false">
+          <input id="anchorSearch" placeholder="search 45 assets — AAPL, gold, SpaceX…" autocomplete="off" spellcheck="false" style="margin-top:9px">
+          <div class="alist" id="anchorList"></div>
+          <div class="hint" id="h-anchor">Fees come back in this asset. It is what your holders receive.</div>
+        </div>
+
+        <div class="field">
+          <label>Image</label>
+          <div class="drop" id="drop">
+            <input type="file" id="f-file" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+            <img id="preview" alt="" hidden>
+            <div id="dropText">
+              <strong>Choose an image</strong>
+              <span>PNG, JPEG, GIF or WebP · up to 5 MB</span>
+            </div>
+          </div>
+          <div class="hint" id="h-img">Optional. A token without one still launches.</div>
+        </div>
+
+        <div class="field">
+          <label for="f-desc">Description <span class="opt">optional</span></label>
+          <textarea id="f-desc" rows="3" maxlength="500" placeholder="What is this token?" spellcheck="true"></textarea>
+          <div class="hint"><span id="descCount">0</span>/500</div>
+        </div>
+
+        <details class="more">
+          <summary>Social links <span class="opt">optional</span></summary>
+          <div class="field" style="margin-top:14px">
+            <label for="f-x">X</label>
+            <input id="f-x" placeholder="https://x.com/…" autocomplete="off" spellcheck="false">
+          </div>
+          <div class="field">
+            <label for="f-tg">Telegram</label>
+            <input id="f-tg" placeholder="https://t.me/…" autocomplete="off" spellcheck="false">
+          </div>
+          <div class="field">
+            <label for="f-web">Website</label>
+            <input id="f-web" placeholder="https://…" autocomplete="off" spellcheck="false">
+          </div>
+        </details>
+
+        <div class="hint" id="metaStatus"></div>
+
+        <div class="acts"><button class="btn btn-p" id="go1" disabled>Continue</button></div>
+      </div>
+    </section>
+
+    <!-- ─── 2 ─── -->
+    <section class="step" id="s2" data-state="idle">
+      <div class="step-h"><span class="step-n">2</span><span class="step-t">Create your vault</span><span class="step-s" id="s2s"></span></div>
+      <div class="step-b">
+        <div id="vaultInfo"></div>
+        <div class="note">
+          <p>
+            The vault is deployed before the token because its address has to be written
+            into the launch itself. Its address is derived from yours, so nobody can take
+            the one you are about to use.
+          </p>
+        </div>
+        <div class="acts"><button class="btn btn-p" id="go2">Deploy vault</button></div>
+        <div class="log" id="log2"></div>
+      </div>
+    </section>
+
+    <!-- ─── 3 ─── -->
+    <section class="step" id="s3" data-state="idle">
+      <div class="step-h"><span class="step-n">3</span><span class="step-t">Launch on long.xyz</span><span class="step-s" id="s3s"></span></div>
+      <div class="step-b">
+        <div id="launchInfo"></div>
+        <div class="note">
+          <p>
+            This is long.xyz's own launcher, called directly by your wallet. FLOWETF never
+            touches your supply or your liquidity — the only thing it changes is which
+            address the fee stream is recorded against.
+          </p>
+        </div>
+        <div class="acts"><button class="btn btn-p" id="go3">Launch token</button></div>
+        <div class="log" id="log3"></div>
+      </div>
+    </section>
+
+    <!-- ─── 4 ─── -->
+    <section class="step" id="s4" data-state="idle">
+      <div class="step-h"><span class="step-n">4</span><span class="step-t">Register</span><span class="step-s" id="s4s"></span></div>
+      <div class="step-b">
+        <div id="regInfo"></div>
+        <div class="note">
+          <p>
+            Registration reads your pool's beneficiary list from the chain and refuses
+            unless the vault is genuinely on it. It is a check, not a claim — which is why
+            a listed token cannot be lying about where its fees go.
+          </p>
+        </div>
+        <div class="acts"><button class="btn btn-p" id="go4">Register token</button></div>
+        <div class="log" id="log4"></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p class="fine">
+      FLOWETF distributes trading fees generated by long.xyz pools. Not an investment
+      product, not a fund, not affiliated with Robinhood, long.xyz, or any issuer of the
+      underlying assets. Payout size depends entirely on trading activity and can be zero.
+      You are signing transactions with your own wallet; review each one before approving.
+    </p>
+  </div>
+</footer>
+
+<script type="module">
+import { keccak256, hexToBytes, bytesToHex, predictVault, pad } from '/keccak.js';
+
+/* ══════════════ chain constants ══════════════
+   All verified on-chain. The factory address is ours; the launcher and pool
+   initializer belong to long.xyz and are read-only from our side. */
+const RPC          = '/rpc';
+const RPC_PUBLIC   = 'https://rpc.mainnet.chain.robinhood.com';
+const CHAIN_HEX    = '0x1237';                                        // 4663
+const FACTORY      = '0xd2ba46aeffec4bfddde62c2dd3e8c76c5c9aeedc';
+const LAUNCHER     = '0x22e99278308B393ea1260859B181AD7E78f5eeED';
+const HOOK         = '0x4e3468951d49f2eea976ed0d6e75ffcb44a9a544';
+const PROTOCOL_BEN = '0x21e2ce70511e4fe542a97708e89520471daa7a66';
+const EXPLORER     = 'https://robinhoodchain.blockscout.com';
+
+/* Positions inside the launch calldata, word-indexed after the 4-byte selector.
+   Established by decoding a real launch and confirmed by simulating a full
+   create() against the live launcher. */
+const W = { salt: 13, nameLen: 26, name: 27, symLen: 28, sym: 29,
+            uriLen: 34, uri: 35, numeraire0: 3, numeraire1: 65, beneficiary: 62 };
+const URI_WORDS = 3;   // words 35..37, so 96 bytes of capacity without shifting offsets
+
+/* Every asset already used as a numeraire on this chain, discovered by reading
+   getState() for each live long.xyz token rather than from any published list —
+   so nothing that actually works is missing. Loaded from /anchors.json.
+   Fields: s symbol, a address, n name, k kind, u times used. */
+let ANCHORS = [];
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const short = (a) => a.slice(0, 8) + '…' + a.slice(-6);
+const txLink = (h) => `<a href="${EXPLORER}/tx/${h}" target="_blank" rel="noopener">${short(h)}</a>`;
+const sel = (s) => bytesToHex(keccak256(new TextEncoder().encode(s))).slice(0, 10);
+
+const state = { account: null, vault: null, salt: null, token: null, metaUri: '',
+                initCode: null, template: null, initHash: null };
+
+/* ══════════════ rpc ══════════════
+   Reads go through the connected wallet when there is one; the same-origin
+   proxy is the fallback because a direct call to the public endpoint fails
+   from some networks. */
+let provider = null;
+async function rpc(method, params) {
+  if (provider) return provider.request({ method, params });
+  const r = await fetch(RPC, { method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) });
+  const j = await r.json();
+  if (j.error) throw new Error(j.error.message);
+  return j.result;
+}
+const ethCall = (to, data) => rpc('eth_call', [{ to, data }, 'latest']);
+async function sendTx(to, data, gas) {
+  if (!provider) throw new Error('Connect a wallet first.');
+  return provider.request({ method: 'eth_sendTransaction',
+    params: [{ from: state.account, ...(to ? { to } : {}), data, ...(gas ? { gas } : {}) }] });
+}
+async function waitTx(hash) {
+  for (let i = 0; i < 150; i++) {
+    const r = await rpc('eth_getTransactionReceipt', [hash]).catch(() => null);
+    if (r) return r;
+    await new Promise((s) => setTimeout(s, 2000));
+  }
+  throw new Error('Timed out waiting for the transaction. It may still confirm — check the explorer.');
+}
+
+/* ══════════════ wallet ══════════════ */
+const OFF_KEY = 'flowetf.wallet.off';
+
+function fmtEth(hex) {
+  const n = Number(BigInt(hex)) / 1e18;
+  if (n === 0) return '0 ETH';
+  if (n < 0.0001) return '<0.0001 ETH';
+  return n.toFixed(n < 1 ? 4 : 3).replace(/0+$/, '').replace(/\.$/, '') + ' ETH';
+}
+
+function closePop() {
+  const p = $('wpop');
+  if (!p || p.hidden) return;
+  p.classList.remove('open');
+  // Hide only after the fade, otherwise the panel vanishes mid-animation.
+  setTimeout(() => { p.hidden = true; }, 170);
+  $('cx').setAttribute('aria-expanded', 'false');
+}
+function openPop() {
+  const p = $('wpop');
+  if (!p) return;
+  p.hidden = false;
+  $('wfull').textContent = state.account || '';
+  // A frame between unhide and the class, so there is a start state to animate
+  // from. Setting both at once snaps instead of fading.
+  requestAnimationFrame(() => p.classList.add('open'));
+  $('cx').setAttribute('aria-expanded', 'true');
+}
+
+function showBalance() {
+  if (!state.account) return;
+  const target = state.account;
+  rpc('eth_getBalance', [target, 'latest']).then((hex) => {
+    if (state.account !== target || !hex) return;   // switched away while in flight
+    $('wbal').textContent = fmtEth(hex);
+  }).catch(() => { /* the address alone is still useful */ });
+}
+
+/* EIP-1193 has no real disconnect — a site cannot make a wallet forget it. Stop
+   using the account, ask the wallet to drop the permission if it supports that,
+   and remember the choice so the silent reconnect does not undo it on the next
+   load. Without the flag the button looks broken. */
+function disconnect() {
+  try { localStorage.setItem(OFF_KEY, '1'); } catch (e) {}
+  const eth = provider || window.ethereum;
+  if (eth && eth.request) {
+    eth.request({ method: 'wallet_revokePermissions', params: [{ eth_accounts: {} }] })
+       .catch(() => { /* most wallets do not implement it; local state still clears */ });
+  }
+  provider = null;
+  setWallet(null);
+}
+
+function setWallet(a) {
+  state.account = a ? a.toLowerCase() : null;
+  const b = $('cx');
+  b.textContent = state.account ? short(state.account) : 'Connect wallet';
+  b.classList.toggle('btn-p', !state.account);
+  b.classList.toggle('btn-s', !!state.account);
+  b.classList.toggle('on', !!state.account);
+  if (state.account) {
+    b.setAttribute('aria-label', 'Connected as ' + state.account);
+    b.setAttribute('aria-expanded', 'false');
+    $('wfull').textContent = state.account;
+    showBalance();
+  } else {
+    b.removeAttribute('aria-label');
+    b.removeAttribute('aria-expanded');
+    $('wbal').textContent = '—';
+    closePop();
+  }
+  validate();
+}
+async function connect() {
+  const eth = window.ethereum;
+  if (!eth) { alert('No wallet found. Open this page in your wallet’s browser.'); return; }
+  provider = eth;
+  const accs = await eth.request({ method: 'eth_requestAccounts' });
+  setWallet(accs && accs[0]);
+  const id = await eth.request({ method: 'eth_chainId' });
+  if (id !== CHAIN_HEX) {
+    await eth.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CHAIN_HEX }] })
+      .catch(() => eth.request({ method: 'wallet_addEthereumChain', params: [{
+        chainId: CHAIN_HEX, chainName: 'Robinhood Chain',
+        nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+        rpcUrls: [RPC_PUBLIC], blockExplorerUrls: [EXPLORER] }] }));
+  }
+  if (eth.on) {
+    eth.on('accountsChanged', (a) => setWallet(a && a[0]));
+    eth.on('chainChanged', () => location.reload());
+  }
+}
+$('cx').addEventListener('click', (e) => {
+  e.stopPropagation();
+  // Connected: open the panel rather than dropping the wallet from a button that
+  // gives no warning — and never re-run connect(), which is all this used to do.
+  if (state.account) { $('wpop').hidden ? openPop() : closePop(); return; }
+  try { localStorage.removeItem(OFF_KEY); } catch (e2) {}
+  connect();
+});
+$('wpop').addEventListener('click', (e) => e.stopPropagation());
+$('wdc').addEventListener('click', () => { closePop(); disconnect(); });
+$('wcopy').addEventListener('click', () => {
+  if (!state.account) return;
+  const done = () => {
+    $('wfull').textContent = 'Copied';
+    setTimeout(() => { if (state.account) $('wfull').textContent = state.account; }, 1100);
+  };
+  // navigator.clipboard is unavailable in plenty of in-app wallet browsers.
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(state.account).then(done).catch(() => {});
+  } else {
+    const t = document.createElement('textarea');
+    t.value = state.account; t.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(t); t.select();
+    try { document.execCommand('copy'); done(); } catch (e3) {}
+    t.remove();
+  }
+});
+document.addEventListener('click', closePop);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePop(); });
+
+/* ══════════════ step 1 — details ══════════════ */
+/* 45 assets is too many for a row of chips, so this is a filter box instead.
+   Sorted by how often each has actually been used as a pair, because that is
+   the most useful default ordering — not alphabetical. */
+function renderAnchors(q = '') {
+  const t = q.trim().toLowerCase();
+  const hits = ANCHORS
+    .filter((x) => !t || x.s.toLowerCase().includes(t) || x.n.toLowerCase().includes(t))
+    .slice(0, 60);
+  if (!ANCHORS.length) { $('anchorList').innerHTML = '<div class="ahint">loading…</div>'; return; }
+  if (!hits.length) { $('anchorList').innerHTML = '<div class="ahint">Nothing matches. You can paste any token address above.</div>'; return; }
+  const cur = $('f-anchor').value.trim().toLowerCase();
+  $('anchorList').innerHTML = hits.map((x) => `
+    <button class="arow" type="button" data-a="${x.a}" aria-pressed="${x.a === cur}">
+      <span class="asym">$${esc(x.s)}</span>
+      <span class="aname">${esc(x.n)}</span>
+      <span class="ause">${x.k === 'lev' ? '3x' : x.u > 1 ? x.u + ' pools' : ''}</span>
+    </button>`).join('');
+}
+$('anchorList').addEventListener('click', (e) => {
+  const b = e.target.closest('.arow'); if (!b) return;
+  $('f-anchor').value = b.dataset.a;
+  renderAnchors($('anchorSearch').value);
+  validate();
+});
+$('anchorSearch').addEventListener('input', (e) => renderAnchors(e.target.value));
+fetch('/anchors.json').then((r) => r.json()).then((j) => { ANCHORS = j; renderAnchors(); })
+  .catch(() => { $('anchorList').innerHTML = '<div class="ahint">Could not load the asset list — paste an address above instead.</div>'; });
+
+/* ── image + metadata ─────────────────────────────────────────────────────
+   The launcher accepts any URI, so this is deliberately forgiving: no image at
+   all is a valid launch, and a pinning outage must never be the thing standing
+   between a dev and their token. The metadata blob is only built when there is
+   something to put in it. */
+let imageRef = null;          // what /api/upload gave back
+const drop = $('drop'), fileInput = $('f-file'), preview = $('preview');
+
+function setImgHint(msg, cls = '') {
+  const h = $('h-img');
+  h.className = 'hint' + (cls ? ' ' + cls : '');
+  h.textContent = msg;
+}
+
+async function uploadImage(file) {
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    return setImgHint(`That file is ${(file.size / 1048576).toFixed(1)} MB — the limit is 5 MB.`, 'no');
+  }
+  drop.classList.add('busy');
+  setImgHint('Uploading…');
+  try {
+    const r = await fetch('/api/upload', { method: 'POST', body: file });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || `upload failed (${r.status})`);
+    imageRef = j.uri;
+    preview.src = j.url || j.uri;
+    preview.hidden = false;
+    $('dropText').hidden = true;
+    setImgHint(`Stored${j.pinned ? ' and pinned to IPFS' : ''} · ${(j.bytes / 1024).toFixed(0)} KB`, 'ok');
+  } catch (e) {
+    imageRef = null;
+    setImgHint(e.message, 'no');
+  } finally {
+    drop.classList.remove('busy');
+    validate();
+  }
+}
+drop.addEventListener('click', () => fileInput.click());
+drop.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
+fileInput.addEventListener('change', (e) => uploadImage(e.target.files[0]));
+['dragenter', 'dragover'].forEach((ev) => drop.addEventListener(ev, (e) => {
+  e.preventDefault(); drop.classList.add('over');
+}));
+['dragleave', 'drop'].forEach((ev) => drop.addEventListener(ev, (e) => {
+  e.preventDefault(); drop.classList.remove('over');
+}));
+drop.addEventListener('drop', (e) => uploadImage(e.dataTransfer?.files?.[0]));
+$('f-desc').addEventListener('input', (e) => { $('descCount').textContent = e.target.value.length; });
+
+/* Builds and stores the metadata blob, returning the URI the launch will carry.
+   Returns '' when there is nothing worth publishing — an empty URI is accepted
+   on chain and is more honest than a blob full of blanks. */
+async function buildMetadata() {
+  const f = form();
+  const socials = { x: $('f-x').value.trim(), telegram: $('f-tg').value.trim(), website: $('f-web').value.trim() };
+  const anySocial = Object.values(socials).some(Boolean);
+  if (!imageRef && !f.desc && !anySocial) return '';
+  if (!imageRef) {
+    setImgHint('Add an image before publishing a description or links — the metadata needs one.', 'no');
+    throw new Error('An image is required once you add a description or social links.');
+  }
+  const r = await fetch('/api/metadata', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name: f.name, description: f.desc, imageUri: imageRef, ...socials }),
+  });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || `metadata failed (${r.status})`);
+  return j.uri;
+}
+
+let tickerTimer = null, tickerOk = false;
+function encString(s) {
+  const b = new TextEncoder().encode(s);
+  return bytesToHex(b).slice(2).padEnd(64, '0');
+}
+async function checkTicker(t) {
+  const h = $('h-sym');
+  if (!/^[A-Za-z]+$/.test(t)) {
+    tickerOk = false;
+    h.className = 'hint no';
+    h.textContent = t ? 'Letters only — this ticker would be rejected on-chain.' : 'Letters only.';
+    return validate();
+  }
+  h.className = 'hint'; h.textContent = 'Checking availability…';
+  try {
+    const b = new TextEncoder().encode(t);
+    const data = sel('isTickerAvailable(string)') + pad('0x20') +
+      pad(b.length.toString(16)) + encString(t);
+    const out = await ethCall(LAUNCHER, data);
+    tickerOk = BigInt(out) === 1n;
+    h.className = 'hint ' + (tickerOk ? 'ok' : 'no');
+    h.textContent = tickerOk ? `$${t.toUpperCase()} is available.` : `$${t.toUpperCase()} is already taken.`;
+  } catch (e) {
+    tickerOk = false;
+    h.className = 'hint no';
+    h.textContent = 'Could not check that ticker on-chain — it may contain a character the launcher rejects.';
+  }
+  validate();
+}
+$('f-sym').addEventListener('input', (e) => {
+  clearTimeout(tickerTimer);
+  const t = e.target.value.trim();
+  tickerOk = false; validate();
+  tickerTimer = setTimeout(() => checkTicker(t), 400);
+});
+['f-name', 'f-anchor'].forEach((id) => $(id).addEventListener('input', validate));
+
+function form() {
+  return {
+    name: $('f-name').value.trim(),
+    sym: $('f-sym').value.trim(),
+    anchor: $('f-anchor').value.trim(),
+    desc: $('f-desc').value.trim(),
+  };
+}
+function validate() {
+  const f = form();
+  const nameOk = f.name.length > 0 && new TextEncoder().encode(f.name).length <= 32;
+  const anchorOk = /^0x[0-9a-fA-F]{40}$/.test(f.anchor);
+  $('h-anchor').className = 'hint' + (f.anchor && !anchorOk ? ' no' : '');
+  $('go1').disabled = !(nameOk && tickerOk && anchorOk && state.account);
+  $('s1s').textContent = state.account ? '' : 'CONNECT WALLET';
+}
+
+/* ══════════════ assets ══════════════ */
+async function loadAssets() {
+  if (state.initCode) return;
+  const [ic, tpl] = await Promise.all([
+    fetch('/vault.initcode').then((r) => r.text()),
+    fetch('/launch.template').then((r) => r.text()),
+  ]);
+  state.initCode = ic.trim();
+  state.template = tpl.trim();
+  state.initHash = bytesToHex(keccak256(hexToBytes(state.initCode)));
+}
+
+/* Mine a salt whose vault address sorts above the protocol beneficiary.
+   Doppler requires the beneficiary array to be ascending by address, and a
+   vault below that line can never be launched with — the failure would only
+   surface later, as an opaque revert. */
+function mineSalt(creator) {
+  const target = BigInt(PROTOCOL_BEN);
+  for (let i = 0; i < 5000; i++) {
+    const r = crypto.getRandomValues(new Uint8Array(32));
+    const salt = bytesToHex(r).slice(2);
+    const addr = predictVault(FACTORY, salt, creator, state.initHash);
+    if (BigInt(addr) > target) return { salt, addr, tries: i + 1 };
+  }
+  throw new Error('Could not find a usable salt.');
+}
+
+const setStep = (n, s) => $('s' + n).setAttribute('data-state', s);
+const led = (k, v, cls = '') =>
+  `<div class="led"><span class="k">${k}</span><span class="d"></span><span class="v ${cls}">${v}</span></div>`;
+
+$('go1').addEventListener('click', async () => {
+  $('go1').disabled = true;
+  try {
+    await loadAssets();
+    const f = form();
+    $('metaStatus').className = 'hint';
+    $('metaStatus').textContent = 'Preparing metadata…';
+    state.metaUri = await buildMetadata();
+    $('metaStatus').textContent = state.metaUri
+      ? 'Metadata published · ' + state.metaUri
+      : 'No metadata — launching without an image.';
+    const m = mineSalt(state.account);
+    state.salt = m.salt; state.vault = m.addr;
+    $('vaultInfo').innerHTML =
+      led('Your vault address', `<code>${short(m.addr)}</code>`, 'v-sig') +
+      led('Sorts above the protocol beneficiary', 'yes', 'v-sig') +
+      led('Salt attempts', String(m.tries), 'v-mut') +
+      led('Deployment cost', '~$1.80', 'v-mut');
+    setStep(1, 'done'); $('s1s').textContent = `$${f.sym.toUpperCase()}`;
+    setStep(2, 'active');
+    $('s2').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) {
+    $('metaStatus').className = 'hint no';
+    $('metaStatus').textContent = e.message;
+    $('go1').disabled = false;
+  }
+});
+
+/* ══════════════ step 2 — deploy vault ══════════════ */
+$('go2').addEventListener('click', async () => {
+  const btn = $('go2'), log = $('log2');
+  btn.disabled = true; log.innerHTML = '<span class="spin"></span> awaiting signature…';
+  try {
+    const data = sel('deployVault(bytes32,address,bytes)') +
+      pad(state.salt) + pad(state.account) + pad('0x60') +
+      pad(((state.initCode.length - 2) / 2).toString(16)) +
+      state.initCode.slice(2).padEnd(Math.ceil((state.initCode.length - 2) / 64) * 64, '0');
+    const hash = await sendTx(FACTORY, data, '0x2DC6C0');   // 3,000,000
+    log.innerHTML = `<span class="spin"></span> sent ${txLink(hash)} — waiting…`;
+    const r = await waitTx(hash);
+    if (r.status !== '0x1') throw new Error('The deployment reverted on-chain.');
+    const code = await rpc('eth_getCode', [state.vault, 'latest']);
+    if (!code || code === '0x') throw new Error('No contract found at the predicted address.');
+    log.innerHTML = `deployed ${txLink(hash)} · <code>${short(state.vault)}</code> · ${(code.length - 2) / 2} bytes on-chain`;
+    setStep(2, 'done'); $('s2s').textContent = 'VAULT READY';
+    prepLaunch();
+    setStep(3, 'active');
+    $('s3').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) {
+    log.innerHTML = `<span style="color:var(--bad)">${esc(e.shortMessage || e.message)}</span>`;
+    btn.disabled = false;
+  }
+});
+
+/* ══════════════ step 3 — launch ══════════════ */
+function buildLaunchCalldata() {
+  const f = form();
+  const d = state.template;
+  const setW = (s, i, v) => s.slice(0, 10 + i * 64) + v + s.slice(10 + i * 64 + 64);
+  const num = (n) => BigInt(n).toString(16).padStart(64, '0');
+  let x = d;
+  x = setW(x, W.salt, bytesToHex(crypto.getRandomValues(new Uint8Array(32))).slice(2));
+  x = setW(x, W.nameLen, num(new TextEncoder().encode(f.name).length));
+  x = setW(x, W.name, encString(f.name));
+  x = setW(x, W.symLen, num(new TextEncoder().encode(f.sym).length));
+  x = setW(x, W.sym, encString(f.sym));
+  // The URI occupies a fixed 3 words in the template, so anything up to 96
+  // bytes can be written in place without shifting a single ABI offset.
+  const ub = new TextEncoder().encode(state.metaUri || '');
+  x = setW(x, W.uriLen, num(ub.length));
+  const uh = bytesToHex(ub).slice(2).padEnd(URI_WORDS * 64, '0');
+  for (let i = 0; i < URI_WORDS; i++) x = setW(x, W.uri + i, uh.slice(i * 64, (i + 1) * 64));
+  x = setW(x, W.numeraire0, pad(f.anchor));
+  x = setW(x, W.numeraire1, pad(f.anchor));
+  x = setW(x, W.beneficiary, pad(state.vault));
+  return x;
+}
+function prepLaunch() {
+  const f = form();
+  $('launchInfo').innerHTML =
+    led('Token', `$${esc(f.sym.toUpperCase())}`, 'v-sig') +
+    led('Anchored to', `<code>${short(f.anchor)}</code>`, 'v-set') +
+    led('Fee recipient', `<code>${short(state.vault)}</code> 95%`, 'v-set') +
+    led('long.xyz', `<code>${short(PROTOCOL_BEN)}</code> 5%`, 'v-mut') +
+    led('Supply to the pool', '100%', 'v-mut') +
+    led('Launch cost', '~$1.20', 'v-mut');
+}
+$('go3').addEventListener('click', async () => {
+  const btn = $('go3'), log = $('log3');
+  btn.disabled = true; log.innerHTML = '<span class="spin"></span> awaiting signature…';
+  try {
+    const data = buildLaunchCalldata();
+    const hash = await sendTx(LAUNCHER, data, '0x2DC6C0');
+    log.innerHTML = `<span class="spin"></span> sent ${txLink(hash)} — waiting…`;
+    const r = await waitTx(hash);
+    if (r.status !== '0x1') throw new Error('The launch reverted on-chain. The ticker may have been taken in the meantime.');
+    // The new token is the contract that minted from the zero address.
+    const T = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+    const mint = (r.logs || []).find((l) => l.topics[0] === T && /^0x0+$/.test(l.topics[1]));
+    if (!mint) throw new Error('Launch succeeded but the new token could not be identified from the receipt.');
+    state.token = mint.address;
+    log.innerHTML = `launched ${txLink(hash)} · token <code>${short(state.token)}</code>`;
+    setStep(3, 'done'); $('s3s').textContent = 'LAUNCHED';
+    $('regInfo').innerHTML =
+      led('Token', `<code>${short(state.token)}</code>`, 'v-sig') +
+      led('Vault', `<code>${short(state.vault)}</code>`, 'v-sig') +
+      led('Registration cost', '~$0.20', 'v-mut');
+    setStep(4, 'active');
+    $('s4').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) {
+    log.innerHTML = `<span style="color:var(--bad)">${esc(e.shortMessage || e.message)}</span>`;
+    btn.disabled = false;
+  }
+});
+
+/* ══════════════ step 4 — register ══════════════ */
+$('go4').addEventListener('click', async () => {
+  const btn = $('go4'), log = $('log4');
+  btn.disabled = true; log.innerHTML = '<span class="spin"></span> awaiting signature…';
+  try {
+    const data = sel('register(address,address)') + pad(state.token) + pad(state.vault);
+    const hash = await sendTx(FACTORY, data, '0x7A120');   // 500,000
+    log.innerHTML = `<span class="spin"></span> sent ${txLink(hash)} — waiting…`;
+    const r = await waitTx(hash);
+    if (r.status !== '0x1') throw new Error('Registration reverted. The chain did not show your vault as the fee beneficiary.');
+    log.innerHTML =
+      `registered ${txLink(hash)}<br><br>` +
+      `<strong style="color:var(--signal)">Done.</strong> Cycles run every 6 hours. ` +
+      `Holders above $100 are paid once the pot clears $500, and after 7 days regardless.<br>` +
+      `<a href="${EXPLORER}/address/${state.token}" target="_blank" rel="noopener">View your token</a>`;
+    setStep(4, 'done'); $('s4s').textContent = 'LIVE';
+  } catch (e) {
+    log.innerHTML = `<span style="color:var(--bad)">${esc(e.shortMessage || e.message)}</span>`;
+    btn.disabled = false;
+  }
+});
+
+/* Reconnect silently if this origin is already authorised — unless the visitor
+   disconnected on purpose. That flag is shared with the home page: without
+   honouring it here, disconnecting there and navigating to /launch reconnected
+   them behind their back, which made the disconnect a lie one page later. */
+let userOff = false;
+try { userOff = localStorage.getItem(OFF_KEY) === '1'; } catch (e) {}
+if (!userOff && window.ethereum?.request) {
+  window.ethereum.request({ method: 'eth_accounts' })
+    .then((a) => { if (a && a.length) { provider = window.ethereum; setWallet(a[0]); } })
+    .catch(() => {});
+}
+validate();
+</script>
+</body>
+</html>

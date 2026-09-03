@@ -1,0 +1,1177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FLOWETF — hold the token, earn real stock</title>
+<meta name="description" content="Automatic stock distributions for long.xyz tokens. Connect the wallet that launched your token, prove you own the fee stream, and holders start earning every 6 hours.">
+<meta name="theme-color" content="#060C09">
+<meta property="og:title" content="FLOWETF — hold the token, earn real stock">
+<meta property="og:description" content="Automatic stock distributions for long.xyz tokens. Every 6 hours, straight to holder wallets.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://flowetf.xyz">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23060C09'/><path d='M9 8v16h8' stroke='%23C8FF00' stroke-width='3.2' fill='none' stroke-linecap='square'/><circle cx='22' cy='11' r='2.6' fill='%23F5B841'/></svg>">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#060C09; --paper:#0B1410; --paper2:#101C16;
+  --rule:#18291F; --rule2:#23392D;
+  --signal:#C8FF00; --settle:#F5B841; --bad:#FF6F5E;
+  --text:#E8F0EA; --muted:#7A8C82; --faint:#4A5A51;
+  --display:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --gut:20px;
+}
+@media(min-width:820px){:root{--gut:40px}}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{background:var(--ink);color:var(--text);font-family:var(--display);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+.wrap{max-width:940px;margin:0 auto;padding:0 var(--gut)}
+.rule{border:0;border-top:1px solid var(--rule)}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--signal);outline-offset:3px;border-radius:2px}
+h1{font-size:clamp(2.2rem,7.5vw,3.7rem);font-weight:800;letter-spacing:-.04em;line-height:1.05;text-wrap:balance}
+h2{font-size:clamp(1.4rem,4vw,2rem);font-weight:800;letter-spacing:-.03em;line-height:1.12;text-wrap:balance}
+h3{font-size:.98rem;font-weight:700;line-height:1.35}
+p{color:var(--muted)}
+.lab{font-family:var(--mono);font-size:.67rem;font-weight:600;letter-spacing:.19em;text-transform:uppercase;color:var(--faint)}
+.lab.on{color:var(--signal)}
+.fig{font-family:var(--mono);font-variant-numeric:tabular-nums}
+strong{color:var(--text);font-weight:700}
+code{font-family:var(--mono);font-size:.86em;color:var(--signal);word-break:break-all}
+
+/* ---------- header ---------- */
+/* Near-opaque (.97), not .9. backdrop-filter leaks in some wallet in-app
+   browsers — exactly where this audience browses — and content behind the bar
+   showed through faintly. The blur still applies where it is supported, but
+   legibility no longer depends on it. */
+header{position:sticky;top:0;z-index:60;background:rgba(6,12,9,.97);backdrop-filter:blur(12px);border-bottom:1px solid var(--rule)}
+.hd{display:flex;align-items:center;justify-content:space-between;gap:12px;height:58px}
+.hd-r{display:flex;align-items:center;gap:12px}
+.chip{display:none;align-items:center;gap:7px;font-family:var(--mono);font-size:.68rem;letter-spacing:.08em;color:var(--muted)}
+@media(min-width:700px){.chip{display:inline-flex}}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--signal);flex:none}
+@media(prefers-reduced-motion:no-preference){.dot.live{animation:bl 2.6s ease-in-out infinite}@keyframes bl{0%,100%{opacity:1}50%{opacity:.2}}}
+
+/* min-height is pinned: without it .btn-sm collapses to 33px on phones, below
+   the 40px touch target and easy to mis-tap. Measured, not assumed. */
+/* Brand: the coin mark plus the wordmark.
+   Drawn as inline SVG rather than the 84KB PNG the token uses. In a header it
+   has to be sharp at 30px and present on the first paint, and a network request
+   for a logo is a request that can arrive late or not at all. */
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.brand .mk{width:30px;height:30px;flex:none;display:block;transition:transform .35s cubic-bezier(.2,.9,.3,1.2)}
+.brand:hover .mk{transform:rotate(-28deg)}
+.brand .wm{font-weight:800;letter-spacing:-.045em;font-size:1.32rem;line-height:1;color:var(--text)}
+.brand .wm .s{color:var(--settle)}
+@media(min-width:820px){.brand .mk{width:34px;height:34px}.brand .wm{font-size:1.5rem}}
+@media(prefers-reduced-motion:reduce){.brand .mk{transition:none}}
+/* ── the pair ────────────────────────────────────────────────────────
+   Hold on the left, earn on the right, and a stream between them that runs
+   left to right because that is the direction the fees travel. The motion is
+   the one thing on this page that is literally true about the mechanism, so it
+   is the one place a moving element is worth its weight. */
+/* min-width:0 all the way down. A grid or flex item refuses to shrink below its
+   content by default, so the 42 character address inside pushed this block wider
+   than the screen and the whole page scrolled sideways. */
+.hero>div{min-width:0}
+.pair{margin:26px 0 6px;border:1px solid var(--rule2);border-radius:6px;background:var(--paper);
+  padding:18px 16px;position:relative;overflow:hidden;min-width:0;max-width:100%}
+.pair::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(120% 80% at 80% 0%,rgba(200,255,0,.05),transparent 60%)}
+.pair-row{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;min-width:0}
+.side{display:flex;align-items:center;gap:11px;min-width:0}
+.tok{width:52px;height:52px;border-radius:50%;flex:none;display:grid;place-content:center;overflow:hidden;
+  border:1px solid var(--rule2);background:#0d1611}
+.tok svg,.tok img{width:100%;height:100%;display:block;object-fit:cover}
+.tok-a svg{padding:5px}
+.side-t{display:flex;flex-direction:column;line-height:1.1;min-width:0}
+.side-k{font-family:var(--mono);font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);margin-bottom:4px}
+.side-t b{font-size:clamp(1.05rem,4.2vw,1.55rem);font-weight:800;letter-spacing:-.03em;white-space:nowrap}
+.side-t b.earn{color:var(--settle)}
+
+.stream{position:relative;height:22px;min-width:34px}
+.s-line{position:absolute;left:0;right:0;top:50%;height:1px;background:linear-gradient(90deg,var(--rule2),var(--rule2))}
+.s-dot{position:absolute;top:50%;width:5px;height:5px;margin-top:-2.5px;border-radius:50%;background:var(--signal);
+  opacity:0;left:0}
+@media(prefers-reduced-motion:no-preference){
+  .s-dot{animation:flow 2.6s linear infinite}
+  .s-dot:nth-child(3){animation-delay:.85s}
+  .s-dot:nth-child(4){animation-delay:1.7s}
+  @keyframes flow{
+    0%{left:0;opacity:0}
+    12%{opacity:1}
+    88%{opacity:1}
+    100%{left:100%;opacity:0}
+  }
+}
+/* Without motion the stream still has to read as a direction, so it becomes a
+   static arrow rather than disappearing. */
+@media(prefers-reduced-motion:reduce){
+  .s-dot{display:none}
+  .s-line{background:var(--rule2)}
+  .stream::after{content:"→";position:absolute;right:-2px;top:50%;transform:translateY(-50%);color:var(--faint);font-size:.9rem}
+}
+
+.pair-ca{display:flex;align-items:center;gap:10px;margin-top:15px;padding:10px 12px;text-decoration:none;
+  border:1px solid var(--rule);border-radius:4px;background:#0d1611;min-width:0;
+  transition:border-color .18s,background .18s}
+.pair-ca code{flex:1;min-width:0;font-size:.74rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .18s}
+.pair-ca .lab{flex:none}
+.pair-go{color:var(--faint);font-size:.9rem;transition:transform .18s,color .18s}
+.pair-ca:hover{border-color:var(--signal);background:#101c14}
+.pair-ca:hover code{color:var(--signal)}
+.pair-ca:hover .pair-go{color:var(--signal);transform:translate(2px,-2px)}
+/* Side by side at every width. It stacked for a while and that was wrong: two
+   logos sitting one above the other read as a list rather than as a flow, and it
+   made the block tall enough to push the buttons off the first screen. Once the
+   min-width:0 chain above was in place three columns fit on a 320px phone, so
+   what narrow screens need is tighter spacing, not a different shape. */
+@media(max-width:620px){
+  .pair{padding:15px 13px}
+  .pair-row{gap:9px}
+  .side{gap:9px}
+  .tok{width:44px;height:44px}
+  .stream{min-width:22px;height:18px}
+  .side-k{font-size:.55rem;letter-spacing:.16em;margin-bottom:3px}
+}
+@media(max-width:380px){
+  .pair-row{gap:7px}
+  .side{gap:7px}
+  .tok{width:38px;height:38px}
+  .stream{min-width:16px}
+}
+@media(max-width:400px){
+  .tok{width:46px;height:46px}
+  .pair{padding:15px 13px}
+  .pair-ca code{font-size:.66rem}
+}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:700;font-size:.92rem;padding:12px 20px;min-height:42px;border-radius:3px;text-decoration:none;cursor:pointer;border:1px solid transparent;font-family:var(--display);transition:background .15s,border-color .15s,color .15s,opacity .15s}
+.btn-p{background:var(--signal);color:#0A1000}
+.btn-p:hover{background:#d9ff3d}
+.btn-s{border-color:var(--rule2);color:var(--text);background:transparent}
+.btn-s:hover{border-color:var(--signal);color:var(--signal)}
+.btn-sm{padding:8px 14px;font-size:.82rem}
+
+/* The X mark sits at the size of a real icon rather than a word, because it is
+   recognised as a shape and reading "X" as text is slower than seeing it. */
+.icn{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:3px;
+  color:var(--muted);border:1px solid transparent;transition:color .15s,border-color .15s}
+.icn svg{width:21px;height:21px;display:block}
+.icn:hover{color:var(--text);border-color:var(--rule2)}
+@media(max-width:520px){.hd-doc{display:none}}
+
+/* ── wallet ──────────────────────────────────────────────────────────
+   Disconnecting used to be hidden inside the same button that connects, which
+   meant the only way to find it was to press the thing you had already pressed
+   and hope. Now the connected state opens a small panel that says what is
+   connected and offers one way out. */
+.wal{position:relative}
+.wpop{position:absolute;right:0;top:calc(100% + 10px);width:246px;background:var(--paper2);
+  border:1px solid var(--rule2);border-radius:5px;padding:12px;z-index:70;
+  box-shadow:0 18px 40px -18px rgba(0,0,0,.9);
+  transform-origin:top right;opacity:0;transform:translateY(-6px) scale(.97);
+  transition:opacity .16s ease,transform .16s cubic-bezier(.2,.9,.3,1.2)}
+.wpop.open{opacity:1;transform:none}
+.wpop-h{display:flex;align-items:center;gap:8px;padding-bottom:9px;border-bottom:1px solid var(--rule)}
+.wpop-a{display:block;width:100%;text-align:left;background:none;border:0;padding:10px 0 8px;cursor:pointer;
+  font-family:var(--mono);font-size:.76rem;color:var(--text);line-height:1.5;overflow-wrap:anywhere}
+.wpop-a:hover{color:var(--signal)}
+.wpop-b{display:flex;justify-content:space-between;gap:10px;font-size:.8rem;color:var(--muted);padding-bottom:11px}
+.wpop-b b{font-family:var(--mono);color:var(--settle);font-weight:700}
+.wdc{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:40px;cursor:pointer;
+  background:none;border:1px solid var(--rule2);border-radius:3px;color:var(--muted);
+  font-family:inherit;font-weight:700;font-size:.83rem;transition:color .15s,border-color .15s,background .15s}
+.wdc svg{width:16px;height:16px;flex:none;transition:transform .2s}
+.wdc:hover{color:var(--bad);border-color:var(--bad);background:rgba(255,111,94,.07)}
+.wdc:hover svg{transform:translateX(2px)}
+/* The address itself gets the live dot when connected, so the header shows
+   state without needing the panel open. */
+#cx.on{position:relative;padding-left:26px}
+#cx.on::before{content:"";position:absolute;left:12px;top:50%;margin-top:-3px;width:6px;height:6px;border-radius:50%;background:#0A1000}
+@media(prefers-reduced-motion:reduce){.wpop{transition:none}.wdc svg{transition:none}}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* ---------- hero ---------- */
+.hero{padding-block:52px 26px;display:grid;gap:34px;align-items:center}
+/* The token grid is now the first thing after the hero, so the two blocks of
+   padding that used to sit between sections read as a hole. Tighten only this
+   join; the spacing between later sections is still doing its job. */
+#live{padding-top:30px}
+@media(min-width:860px){#live{padding-top:40px}}
+@media(min-width:860px){.hero{grid-template-columns:1fr auto;padding-block:72px 56px;gap:56px}}
+.hero h1{margin:14px 0 0}
+.hero h1 em{font-style:normal;color:var(--settle)}
+.hero p{font-size:1.05rem;margin-top:16px;max-width:44ch}
+.acts{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+
+/* cycle ring */
+.ring{position:relative;width:190px;height:190px;justify-self:center;flex:none}
+.ring svg{transform:rotate(-90deg);display:block}
+.ring .trk{stroke:var(--rule);fill:none;stroke-width:6}
+.ring .arc{stroke:var(--signal);fill:none;stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset .9s linear}
+.ring .ctr{position:absolute;inset:0;display:grid;place-content:center;text-align:center;gap:4px}
+.ring .t{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:1.42rem;font-weight:700;letter-spacing:-.02em}
+
+/* ---------- app panel ---------- */
+.app{background:var(--paper);border:1px solid var(--rule2);border-radius:5px;overflow:hidden}
+.app-h{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid var(--rule);background:var(--paper2);flex-wrap:wrap}
+.app-b{padding:20px 18px}
+.field{display:flex;gap:9px;flex-wrap:wrap}
+.field input{
+  flex:1 1 260px;min-width:0;background:#040806;border:1px solid var(--rule2);border-radius:3px;
+  color:var(--text);font-family:var(--mono);font-size:.86rem;padding:13px 14px;
+}
+.field input::placeholder{color:var(--faint)}
+.field input:focus{outline:none;border-color:var(--signal)}
+.hint{font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:12px;letter-spacing:.02em}
+
+.result{margin-top:18px;border-top:1px solid var(--rule);padding-top:16px}
+.result[hidden]{display:none}
+@media(prefers-reduced-motion:no-preference){.result{animation:up .38s cubic-bezier(.2,.7,.3,1)}@keyframes up{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}}
+.verdict{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.02rem;letter-spacing:-.01em}
+.verdict .m{font-family:var(--mono);font-size:1.15rem}
+.ok{color:var(--signal)} .no{color:var(--bad)} .wait{color:var(--muted)}
+.led{display:flex;align-items:baseline;gap:8px;padding:10px 0;border-bottom:1px solid var(--rule)}
+.led:last-child{border-bottom:0}
+.led .k{font-size:.88rem;color:var(--muted);flex:none;max-width:62%}
+.led .d{flex:1;border-bottom:1px dotted var(--rule2);transform:translateY(-4px);min-width:10px}
+.led .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:.86rem;font-weight:700;flex:none;text-align:right;word-break:break-all}
+.v-set{color:var(--settle)} .v-sig{color:var(--signal)} .v-mut{color:var(--faint)}
+
+@media(prefers-reduced-motion:no-preference){
+  .spin{display:inline-block;width:13px;height:13px;border:2px solid var(--rule2);border-top-color:var(--signal);border-radius:50%;animation:sp .7s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid var(--rule2);border-top-color:var(--signal);border-radius:50%}
+
+/* ---------- token grid ---------- */
+section{padding:58px 0}
+@media(min-width:820px){section{padding:78px 0}}
+.sechead{display:flex;flex-direction:column;gap:12px;margin-bottom:26px}
+.tokens{display:grid;gap:12px}
+@media(min-width:620px){.tokens{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:900px){.tokens{grid-template-columns:repeat(3,1fr)}}
+/* Two card classes that must never be mistaken for one another.
+   LOCKED is chartreuse with a solid edge; DELEGATED is amber with a dashed one
+   and a slow travelling highlight. The dashes and the movement are not
+   decoration — a stream that can be withdrawn should not look as settled as one
+   that cannot, and a holder should be able to tell them apart across a room. */
+.tk{position:relative;display:grid;gap:12px;padding:16px;border-radius:5px;overflow:hidden;
+    background:var(--paper);border:1px solid var(--rule);text-decoration:none;color:inherit;
+    transition:transform .22s cubic-bezier(.2,.7,.3,1),border-color .22s,box-shadow .22s}
+.tk:hover{transform:translateY(-3px)}
+.tk-lock{border-color:#24401C;box-shadow:inset 0 1px 0 rgba(200,255,0,.05)}
+.tk-lock:hover{border-color:var(--signal);box-shadow:0 10px 30px -14px rgba(200,255,0,.4)}
+.tk-del{border-style:dashed;border-color:#4A3A18}
+.tk-del:hover{border-color:var(--settle);box-shadow:0 10px 30px -14px rgba(245,184,65,.35)}
+
+.tk-badge{position:absolute;top:12px;right:12px;font-family:var(--mono);font-size:.58rem;
+  letter-spacing:.14em;padding:3px 7px;border-radius:2px;z-index:2}
+.tk-lock .tk-badge{color:#0A1000;background:var(--signal)}
+/* Our own token. The tag sits where the eye lands first; LOCKED drops below it
+   rather than being replaced, because the two say different things — one is who
+   made it, the other is what the chain enforces. */
+.tk-official{position:absolute;top:12px;right:12px;font-family:var(--mono);font-size:.58rem;
+  letter-spacing:.14em;padding:3px 7px;border-radius:2px;z-index:3;
+  color:var(--settle);border:1px solid var(--settle);background:rgba(245,184,65,.10)}
+.tk-badge-2{top:38px}
+.tk-own{border-color:#3E5A22}
+.tk-del .tk-badge{color:var(--settle);border:1px solid #4A3A18;background:rgba(245,184,65,.07)}
+
+/* the anchor symbol as a ghost mark — identify a card without reading it */
+.tk-wm{position:absolute;right:-6px;bottom:-18px;font-family:var(--mono);font-weight:700;
+  font-size:3.6rem;letter-spacing:-.05em;line-height:1;pointer-events:none;z-index:0;
+  color:rgba(255,255,255,.028)}
+.tk-lock .tk-wm{color:rgba(200,255,0,.05)}
+.tk-del .tk-wm{color:rgba(245,184,65,.05)}
+
+.tk-t{display:flex;align-items:center;gap:11px;position:relative;z-index:1}
+.tk-t img,.tk-t .ph{width:38px;height:38px;border-radius:50%;flex:none;object-fit:cover;background:var(--paper2);border:1px solid var(--rule2)}
+.tk-t .ph{display:grid;place-content:center;font-family:var(--mono);font-size:.72rem;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+.tk-n{min-width:0;display:grid}
+.tk-n .sym{font-weight:800;letter-spacing:-.02em}
+.tk-n .an{font-family:var(--mono);font-size:.7rem;color:var(--faint);letter-spacing:.05em}
+.tk-n .an b{color:var(--settle);font-weight:600}
+.tk-f{position:relative;z-index:1;font-family:var(--mono);font-size:.66rem;letter-spacing:.03em;
+  padding-top:11px;border-top:1px solid var(--rule)}
+.tk-lock .tk-f{color:#7FA33C}
+.tk-del .tk-f{color:#9A7B3A}
+
+@media(prefers-reduced-motion:no-preference){
+  /* Only the revocable class moves. Motion here means "not settled". */
+  .tk-del::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(115deg,transparent 38%,rgba(245,184,65,.09) 50%,transparent 62%);
+    background-size:260% 100%;animation:drift 5.5s ease-in-out infinite}
+  @keyframes drift{0%{background-position:120% 0}100%{background-position:-60% 0}}
+}
+.empty{border:1px dashed var(--rule2);border-radius:5px;padding:34px 22px;text-align:center}
+.empty p{max-width:46ch;margin:8px auto 0;font-size:.92rem}
+@media(prefers-reduced-motion:no-preference){
+  .rise{opacity:0;transform:translateY(14px)}
+  .rise.in{opacity:1;transform:none;transition:opacity .55s ease,transform .55s cubic-bezier(.2,.7,.3,1)}
+}
+
+/* ---------- three points ---------- */
+.trio{display:grid;gap:0}
+@media(min-width:760px){.trio{grid-template-columns:repeat(3,1fr);gap:0 36px}}
+.trio>div{padding:20px 0;border-top:1px solid var(--rule)}
+.trio .n{font-family:var(--mono);font-size:.74rem;color:var(--signal);font-weight:700;letter-spacing:.08em}
+.trio h3{margin:7px 0 5px}
+.trio p{font-size:.9rem}
+
+/* ---------- faq ---------- */
+details{border-top:1px solid var(--rule)}
+details:last-of-type{border-bottom:1px solid var(--rule)}
+summary{padding:17px 32px 17px 0;cursor:pointer;font-weight:700;font-size:.95rem;list-style:none;position:relative}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";position:absolute;right:3px;top:15px;font-family:var(--mono);color:var(--signal);font-size:1.1rem}
+details[open] summary::after{content:"–"}
+details p{padding:0 0 19px;font-size:.9rem;max-width:64ch}
+
+footer{border-top:1px solid var(--rule);padding:30px 0 46px}
+.fnav{display:flex;flex-wrap:wrap;gap:8px 20px;font-family:var(--mono);font-size:.75rem;margin:16px 0 22px}
+.fnav a{color:var(--muted);text-decoration:none}
+.fnav a:hover{color:var(--signal)}
+.fine{font-size:.76rem;color:var(--faint);line-height:1.65;max-width:74ch}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap hd">
+    <a class="brand" href="#top">
+      <svg class="mk" viewBox="0 0 40 40" aria-hidden="true">
+        <g fill="none" stroke-linecap="round" stroke-width="4.6">
+          <path stroke="var(--settle)" d="M21.71 6.10A14 14 0 0 1 33.90 18.29"/>
+          <path stroke="var(--signal)" d="M33.90 21.71A14 14 0 0 1 21.71 33.90"/>
+          <path stroke="var(--signal)" d="M18.29 33.90A14 14 0 0 1 6.10 21.71"/>
+          <path stroke="var(--signal)" d="M6.10 18.29A14 14 0 0 1 18.29 6.10"/>
+        </g>
+        <polyline fill="none" stroke="#E8F0EA" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"
+                  points="13.73,24.93 17.98,22.15 22.02,23.67 27.17,16.19"/>
+        <circle cx="27.17" cy="16.19" r="2.1" fill="var(--settle)"/>
+      </svg>
+      <span class="wm">FLOW<span class="s">ETF</span></span>
+    </a>
+    <div class="hd-r">
+      <span class="chip"><i class="dot live"></i> ROBINHOOD CHAIN · 4663</span>
+      <a class="icn" id="xtop" href="https://x.com/FlowETF_RH" target="_blank" rel="noopener" aria-label="FLOWETF on X">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+      </a>
+      <a class="btn btn-sm hd-doc" href="/docs">Docs</a>
+      <div class="wal">
+        <button class="btn btn-p btn-sm" id="cx">Connect wallet</button>
+        <div class="wpop" id="wpop" hidden>
+          <div class="wpop-h"><i class="dot live"></i><span class="lab">Connected</span></div>
+          <button class="wpop-a" id="wcopy" type="button" title="Copy address"><span id="wfull">…</span></button>
+          <div class="wpop-b"><span>Balance</span><b id="wbal">…</b></div>
+          <button class="wdc" id="wdc" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M15 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-2M10 12h11m0 0-3-3m3 3-3 3"/></svg>
+            Disconnect
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- ════════ HERO ════════ -->
+  <div class="wrap hero">
+    <div>
+      <span class="lab on">For tokens launched on long.xyz</span>
+      <h1>Hold the token.<br>Earn <em>real stock</em>.</h1>
+      <p>
+        Your long.xyz pool collects fees in whatever it is anchored to — usually
+        a tokenized stock. We send that straight to your holders, every 6 hours.
+      </p>
+      <!-- The pair, stated plainly. What you hold on the left, what arrives on the
+           right, and the stream between them moving in the direction the fees
+           actually travel. -->
+      <div class="pair">
+        <div class="pair-row">
+          <div class="side">
+            <span class="tok tok-a"><svg viewBox="0 0 40 40" aria-hidden="true">
+            <g fill="none" stroke-linecap="round" stroke-width="4.6">
+              <path stroke="var(--settle)" d="M21.71 6.10A14 14 0 0 1 33.90 18.29"/>
+              <path stroke="var(--signal)" d="M33.90 21.71A14 14 0 0 1 21.71 33.90"/>
+              <path stroke="var(--signal)" d="M18.29 33.90A14 14 0 0 1 6.10 21.71"/>
+              <path stroke="var(--signal)" d="M6.10 18.29A14 14 0 0 1 18.29 6.10"/>
+            </g>
+            <polyline fill="none" stroke="#E8F0EA" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"
+                      points="13.73,24.93 17.98,22.15 22.02,23.67 27.17,16.19"/>
+            <circle cx="27.17" cy="16.19" r="2.1" fill="var(--settle)"/>
+          </svg></span>
+            <span class="side-t"><span class="side-k">Hold</span><b>$FLOWETF</b></span>
+          </div>
+
+          <div class="stream" aria-hidden="true">
+            <span class="s-line"></span>
+            <i class="s-dot"></i><i class="s-dot"></i><i class="s-dot"></i>
+          </div>
+
+          <div class="side">
+            <span class="tok tok-b"><img src="/ipfs/bafkreihtnj2ch4yi4hmj22zd53xmyeevn4ewglv4ksh7ikdnriphilicxq" alt="" loading="lazy" width="52" height="52"></span>
+            <span class="side-t"><span class="side-k">Earn</span><b class="earn">$AI</b></span>
+          </div>
+        </div>
+
+        <a class="pair-ca" href="https://robinhoodchain.blockscout.com/address/0xef8f0826377edd7fbee5f9061e7d829fec5cb1ad" target="_blank" rel="noopener">
+          <span class="lab">Contract</span>
+          <code>0xef8f0826377edd7fbee5f9061e7d829fec5cb1ad</code>
+          <span class="pair-go" aria-hidden="true">↗</span>
+        </a>
+      </div>
+
+      <div class="acts">
+        <a class="btn btn-p" href="/launch">Launch a token</a>
+        <a class="btn btn-s" href="#verify">Check my token</a>
+        <a class="btn btn-s" href="/docs">Read the docs</a>
+      </div>
+    </div>
+
+    <div class="ring" aria-label="Time until the next settlement window">
+      <svg width="190" height="190" viewBox="0 0 190 190" aria-hidden="true">
+        <circle class="trk" cx="95" cy="95" r="86"></circle>
+        <circle class="arc" id="arc" cx="95" cy="95" r="86"></circle>
+      </svg>
+      <div class="ctr">
+        <div class="lab">Next cycle</div>
+        <div class="t" id="cd">--:--:--</div>
+        <div class="lab">every 6h</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ LIVE TOKENS ════════ -->
+  <section id="live">
+    <div class="wrap">
+      <div class="sechead">
+        <span class="lab">Live on FLOWETF</span>
+        <h2>Tokens distributing to holders</h2>
+      </div>
+      <div id="grid"></div>
+    </div>
+  </section>
+
+  <!-- ════════ VERIFY APP ════════ -->
+  <div class="wrap" id="verify" style="padding-bottom:20px">
+    <div class="app">
+      <div class="app-h">
+        <span class="lab on">Fee-receiver check</span>
+        <span class="lab" id="wstat">Not connected</span>
+      </div>
+      <div class="app-b">
+        <div class="field">
+          <input id="ca" placeholder="Paste your token contract address (0x…)" spellcheck="false" autocomplete="off" inputmode="text">
+          <button class="btn btn-p" id="go">Verify</button>
+        </div>
+        <p class="hint" id="hint">Reads the long.xyz fee split on-chain. Nothing is signed, and no approval is requested.</p>
+
+        <div class="result" id="res" hidden></div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="rule">
+
+  <!-- ════════ HOW ════════ -->
+  <section id="how">
+    <div class="wrap">
+      <div class="sechead">
+        <span class="lab">How it works</span>
+        <h2>Three things happen, every six hours.</h2>
+      </div>
+      <div class="trio">
+        <div>
+          <span class="n">01</span>
+          <h3>Fees are collected</h3>
+          <p>Both legs come out of long.xyz at once — your token, and the asset it is anchored to.</p>
+        </div>
+        <div>
+          <span class="n">02</span>
+          <h3>Half your token is burned</h3>
+          <p>Sent to <code>0x…dEaD</code>, gone for good. The other half pays the gas. This runs every cycle.</p>
+        </div>
+        <div>
+          <span class="n">03</span>
+          <h3>Holders get the stock</h3>
+          <p>All of it, split by how much they hold. Pushed to their wallets — nobody claims, nobody signs.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <!-- ════════ FAQ ════════ -->
+  <section id="faq">
+    <div class="wrap">
+      <div class="sechead">
+        <span class="lab">Questions</span>
+        <h2>Straight answers</h2>
+      </div>
+      <details open>
+        <summary>Do holders have to claim?</summary>
+        <p>Never. There is no claim button anywhere, on purpose — fake claim pages are how most wallets get drained. The stock is pushed to holders. If a site asks you to connect and claim a FLOWETF payout, it is not us.</p>
+      </details>
+      <details>
+        <summary>Who receives the payout?</summary>
+        <p>Anyone holding at least $100 of the token at the snapshot, valued live against marketcap. Everyone above that line shares the payout in proportion to what they hold. What you receive is whatever the token is anchored to — usually a tokenized stock, though a pool can be paired against any asset. Each token's card states exactly what it pays.</p>
+      </details>
+      <details>
+        <summary>What if there are barely any fees that cycle?</summary>
+        <p>Distributions wait until the pot is worth $500, because gas is charged per wallet and shredding a tiny pot across hundreds of holders wastes most of it. Nothing is lost while it waits, and after 7 days it is paid out regardless of size.</p>
+      </details>
+      <details>
+        <summary>What does it cost me?</summary>
+        <p>5% of what actually gets distributed. No setup fee, no monthly fee, and nothing at all on a cycle that pays out nothing.</p>
+      </details>
+      <details>
+        <summary>Can you run off with the stock?</summary>
+        <p>The contract can only send the one stock token it was deployed with, only to addresses that genuinely hold your token, and at most 70% of the balance per cycle. It has no withdraw-to-owner path on the distribution side. Not audited by an outside firm — 35 behavioural tests against a local EVM, and short enough to read end to end.</p>
+      </details>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a class="brand" href="#top">
+      <svg class="mk" viewBox="0 0 40 40" aria-hidden="true">
+        <g fill="none" stroke-linecap="round" stroke-width="4.6">
+          <path stroke="var(--settle)" d="M21.71 6.10A14 14 0 0 1 33.90 18.29"/>
+          <path stroke="var(--signal)" d="M33.90 21.71A14 14 0 0 1 21.71 33.90"/>
+          <path stroke="var(--signal)" d="M18.29 33.90A14 14 0 0 1 6.10 21.71"/>
+          <path stroke="var(--signal)" d="M6.10 18.29A14 14 0 0 1 18.29 6.10"/>
+        </g>
+        <polyline fill="none" stroke="#E8F0EA" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"
+                  points="13.73,24.93 17.98,22.15 22.02,23.67 27.17,16.19"/>
+        <circle cx="27.17" cy="16.19" r="2.1" fill="var(--settle)"/>
+      </svg>
+      <span class="wm">FLOW<span class="s">ETF</span></span>
+    </a>
+    <nav class="fnav">
+      <a href="/launch">Launch</a>
+      <a href="#verify">Check token</a>
+      <a href="#how">How it works</a>
+      <a href="#faq">FAQ</a>
+      <a id="xfoot" href="#" rel="noopener" target="_blank">X</a>
+    </nav>
+    <p class="fine">
+      FLOWETF distributes trading fees generated by long.xyz pools. Not an investment product,
+      not a fund, not affiliated with Robinhood, long.xyz, or any issuer of the underlying stocks.
+      Payouts depend entirely on trading activity and can be zero. Tokenized stocks can be paused
+      by their issuer, which pauses distribution with them. Nothing here is financial advice.
+    </p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ══════════════ chain constants ══════════════
+     VERIFIED ON-CHAIN 2026-09-01. feeRecipients(address) on the long.xyz hook
+     returns a dynamic array of (address recipient, uint256 shareWei), where
+     1e18 == 100%. Every long.xyz token resolves to two entries: the launchpad
+     on ~5%, and the creator — the fee receiver — on ~95%. A token that was not
+     launched through long.xyz returns an empty array. Confirmed against 28
+     distinct live tokens. */
+  // Chain reads go through OUR OWN ORIGIN, not the public RPC directly.
+  // From Indonesian networks a direct fetch to rpc.mainnet.chain.robinhood.com
+  // fails with "Failed to fetch" — Robinhood is a US broker and the endpoint
+  // appears to be geo-restricted. Caddy on flowetf.xyz relays it instead.
+  // RPC_PUBLIC is used ONLY for wallet_addEthereumChain: the wallet needs an
+  // absolute URL of its own, and that call runs on the wallet's network.
+  // PLACEHOLDER — the real X handle is not set yet. Change it here, once.
+  var X_URL      = 'https://x.com/FlowETF_RH';
+  var RPC        = '/rpc';
+  var RPC_PUBLIC = 'https://rpc.mainnet.chain.robinhood.com';
+  // Our own token. The ring follows its vault, and its card is marked as ours.
+  var OFFICIAL = '0xef8f0826377edd7fbee5f9061e7d829fec5cb1ad';
+  var CHAIN_HEX = '0x1237';                                        // 4663
+  var HOOK      = '0x4e3468951d49f2eea976ed0d6e75ffcb44a9a544';
+  var SEL_FEES  = '0x1cab59a4';                                    // feeRecipients(address)
+  var SEL_SYM   = '0x95d89b41';                                    // symbol()
+  var SEL_NAME  = '0x06fdde03';                                    // name()
+
+  /* Tokens already wired to FLOWETF. Deliberately empty until one actually is —
+     a grid of invented logos would be the fastest way to lose the audience we
+     are asking to trust an automated payout. Add real entries as they go live:
+     { symbol:'ROCK', name:'Rock', anchor:'GLD', address:'0x…', logo:'/logo/rock.png' } */
+  var REGISTRY = [];
+
+  var $ = function (id) { return document.getElementById(id); };
+  var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ══════════════ cycle ring ══════════════
+     Reads OUR token's vault rather than a wall clock. The contract gates the
+     next cycle on lastCollectAt + cycleInterval, so a fixed 00:00/06:00 UTC
+     countdown was a schedule nobody's vault actually keeps — it looked precise
+     while describing nothing. */
+  var arc = $('arc'), cd = $('cd');
+  var ringLabs = document.querySelectorAll('.ring .ctr .lab');
+  var ringTop = ringLabs[0], ringBot = ringLabs[1];
+  var R = 86, C = 2 * Math.PI * R;
+  if (arc) { arc.style.strokeDasharray = C; }
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  var ringTimer = null;
+  function runRing(due, span) {
+    clearInterval(ringTimer);
+    /* Undo the idle look. Leaving the dashed grey stroke in place while a real
+       countdown ran made the ring say "nothing is happening" and "5 hours to go"
+       at the same time. */
+    if (arc) { arc.style.stroke = 'var(--signal)'; arc.style.strokeDasharray = C; }
+    if (cd) { cd.style.fontSize = ''; cd.style.letterSpacing = ''; }
+    function tick() {
+      var left = due - Math.floor(Date.now() / 1000);
+      if (left <= 0) {
+        if (cd) { cd.textContent = 'eligible'; cd.style.fontSize = '1.05rem'; }
+        if (arc) arc.style.strokeDashoffset = 0;
+        clearInterval(ringTimer);
+        return;
+      }
+      if (cd) cd.textContent = pad(Math.floor(left / 3600)) + ':' + pad(Math.floor(left / 60) % 60) + ':' + pad(left % 60);
+      if (arc) arc.style.strokeDashoffset = C * (left / span);
+    }
+    tick();
+    ringTimer = setInterval(tick, 1000);
+  }
+
+  /* No cycle has run yet means there is no deadline to count to. Saying so is
+     better than animating toward a moment that does not exist. */
+  function ringIdle(msg) {
+    clearInterval(ringTimer);
+    if (cd) { cd.textContent = msg; cd.style.fontSize = '.95rem'; cd.style.letterSpacing = '0'; }
+    if (arc) { arc.style.strokeDashoffset = C; arc.style.stroke = 'var(--faint)'; arc.style.strokeDasharray = '4 8'; }
+  }
+
+  async function initRing() {
+    try {
+      var vaultRaw = await call('eth_call', [{ to: FACTORY, data: selOf('vaultOf(address)') + padAddr(OFFICIAL) }, 'latest']);
+      var vault = vaultRaw && vaultRaw !== '0x' ? '0x' + vaultRaw.slice(26) : null;
+      if (!vault || /^0x0+$/.test(vault)) { ringIdle('not live yet'); return; }
+      var res = await Promise.all([
+        call('eth_call', [{ to: vault, data: selOf('lastCollectAt()') }, 'latest']),
+        call('eth_call', [{ to: vault, data: selOf('cycleInterval()') }, 'latest']),
+      ]);
+      var last = res[0] && res[0] !== '0x' ? Number(BigInt(res[0])) : 0;
+      var span = res[1] && res[1] !== '0x' ? Number(BigInt(res[1])) : 0;
+      // The token name goes on the lower label; inside a 190px ring the two
+      // together overflowed the circle and the ticker was cut in half.
+      if (ringBot && span) ringBot.textContent = '$FLOWETF · every ' + (span / 3600) + 'h';
+      if (!last || !span) { ringIdle('ready when called'); return; }
+      runRing(last + span, span);
+    } catch (e) { ringIdle('—'); }
+  }
+  function padAddr(a) { return a.replace(/^0x/, '').toLowerCase().padStart(64, '0'); }
+  ringIdle('…');
+  /* Started at the bottom of this script, not here. FACTORY is a `var` declared
+     further down: hoisting gives us the name but not the value, so calling this
+     inline would read `undefined` and quietly leave the ring blank. */
+
+  /* ══════════════ rpc ══════════════
+     Reads go through the connected wallet when there is one: it avoids the
+     public endpoint's rate limit and works in sandboxed contexts where direct
+     fetch is blocked. Falls back to the public RPC when no wallet is present. */
+  var provider = null;
+  function call(method, params) {
+    if (provider) return provider.request({ method: method, params: params });
+    return fetch(RPC, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: method, params: params })
+    }).then(function (r) { return r.json(); }).then(function (j) {
+      if (j.error) throw new Error(j.error.message);
+      return j.result;
+    });
+  }
+  function word(hex, i) { return hex.substr(i * 64, 64); }
+  function toAddr(w) { return '0x' + w.slice(24); }
+  function short(a) { return a.slice(0, 6) + '…' + a.slice(-4); }
+
+  function decodeString(out) {
+    if (!out || out === '0x') return null;
+    var h = out.slice(2);
+    try {
+      var len = parseInt(word(h, 1), 16);
+      if (!len || len > 128) return null;
+      var bytes = h.substr(128, len * 2), s = '';
+      for (var i = 0; i < bytes.length; i += 2) s += String.fromCharCode(parseInt(bytes.substr(i, 2), 16));
+      return s.replace(/[^\x20-\x7E]/g, '').trim() || null;
+    } catch (e) { return null; }
+  }
+
+  function feeRecipients(token) {
+    var data = SEL_FEES + token.replace(/^0x/, '').toLowerCase().padStart(64, '0');
+    return call('eth_call', [{ to: HOOK, data: data }, 'latest']).then(function (out) {
+      if (!out || out === '0x') return [];
+      var h = out.slice(2);
+      /* A length read out of a response is attacker-controlled and, when the
+         decode goes wrong, arbitrarily large. Bound it by what the response
+         could actually contain — otherwise one bad parse spins the browser
+         until the tab dies, which is exactly what happened. */
+      var n = parseInt(word(h, 1), 16) || 0;
+      var maxPairs = Math.floor((h.length / 64 - 2) / 2);
+      if (!(n >= 0) || n > maxPairs) n = Math.max(0, maxPairs);
+      var list = [];
+      for (var i = 0; i < n; i++) {
+        list.push({
+          addr: toAddr(word(h, 2 + i * 2)).toLowerCase(),
+          share: Number(BigInt('0x' + word(h, 3 + i * 2))) / 1e18
+        });
+      }
+      return list;
+    });
+  }
+
+  /* ══════════════ wallet ══════════════ */
+  var account = null;
+  var cx = $('cx'), wstat = $('wstat');
+
+  /* A wallet that says nothing but its own address gives a visitor no way to
+     tell whether they are on the right chain with usable funds, so show the
+     balance too. It is read on the chain we care about, not whatever the wallet
+     happens to be pointed at. */
+  function fmtEth(wei) {
+    var n = Number(BigInt(wei)) / 1e18;
+    if (n === 0) return '0 ETH';
+    if (n < 0.0001) return '<0.0001 ETH';
+    return n.toFixed(n < 1 ? 4 : 3).replace(/0+$/, '').replace(/\.$/, '') + ' ETH';
+  }
+
+  function showBalance() {
+    if (!account) return;
+    var target = account;
+    call('eth_getBalance', [target, 'latest']).then(function (hex) {
+      if (account !== target || !hex) return;        // switched away while in flight
+      wstat.textContent = 'CONNECTED · ' + short(account) + ' · ' + fmtEth(hex);
+      if (wbal) wbal.textContent = fmtEth(hex);
+    }).catch(function () { /* the address alone is still useful */ });
+  }
+
+  var wpop = $('wpop'), wfull = $('wfull'), wbal = $('wbal');
+
+  function closePop() {
+    if (!wpop || wpop.hidden) return;
+    wpop.classList.remove('open');
+    // Wait for the fade before hiding, or the panel vanishes mid-animation.
+    setTimeout(function () { wpop.hidden = true; }, 170);
+    cx.setAttribute('aria-expanded', 'false');
+  }
+  function openPop() {
+    if (!wpop) return;
+    wpop.hidden = false;
+    if (wfull) wfull.textContent = account || '';
+    // A frame between unhide and the class, so the browser has a start state
+    // to animate from. Setting both at once just snaps.
+    requestAnimationFrame(function () { wpop.classList.add('open'); });
+    cx.setAttribute('aria-expanded', 'true');
+  }
+
+  function setWallet(a) {
+    account = a ? a.toLowerCase() : null;
+    if (account) {
+      cx.textContent = short(account);
+      cx.title = 'Wallet';
+      cx.setAttribute('aria-label', 'Connected as ' + account);
+      cx.setAttribute('aria-expanded', 'false');
+      cx.classList.add('on');
+      wstat.textContent = 'CONNECTED · ' + short(account);
+      if (wfull) wfull.textContent = account;
+      showBalance();
+    } else {
+      cx.textContent = 'Connect wallet';
+      cx.title = '';
+      cx.removeAttribute('aria-label');
+      cx.removeAttribute('aria-expanded');
+      cx.classList.remove('on');
+      wstat.textContent = 'Not connected';
+      if (wbal) wbal.textContent = '—';
+      closePop();
+    }
+  }
+
+  /* EIP-1193 has no real disconnect — a site cannot make a wallet forget it.
+     What we can do is stop using the account, ask the wallet to drop the
+     permission if it supports that, and remember the choice so the silent
+     reconnect below does not immediately undo it. Anything else would leave a
+     Disconnect button that visibly does nothing. */
+  var OFF_KEY = 'flowetf.wallet.off';
+  function disconnect() {
+    try { localStorage.setItem(OFF_KEY, '1'); } catch (e) {}
+    var eth = provider || window.ethereum;
+    if (eth && eth.request) {
+      eth.request({ method: 'wallet_revokePermissions', params: [{ eth_accounts: {} }] })
+         .catch(function () { /* most wallets do not implement it; local state still clears */ });
+    }
+    provider = null;
+    setWallet(null);
+  }
+
+  function connect() {
+    var eth = window.ethereum;
+    if (!eth) {
+      show('<div class="verdict no"><span class="m">×</span> No wallet detected</div>' +
+           '<p style="margin-top:10px;font-size:.9rem">Open this page inside your wallet\'s browser, or install one that supports Robinhood Chain. You can still verify a token without connecting.</p>');
+      return;
+    }
+    provider = eth;
+    cx.disabled = true;
+    eth.request({ method: 'eth_requestAccounts' })
+      .then(function (accs) {
+        setWallet(accs && accs[0]);
+        return eth.request({ method: 'eth_chainId' });
+      })
+      .then(function (id) {
+        if (id === CHAIN_HEX) return null;
+        return eth.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CHAIN_HEX }] })
+          .catch(function () {
+            return eth.request({
+              method: 'wallet_addEthereumChain',
+              params: [{
+                chainId: CHAIN_HEX, chainName: 'Robinhood Chain',
+                nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+                rpcUrls: [RPC_PUBLIC], blockExplorerUrls: ['https://robinhoodchain.blockscout.com']
+              }]
+            });
+          });
+      })
+      .then(function () {
+        // Re-read once the chain is settled: the first read happened before the
+        // switch and could have reported a balance from a different network.
+        showBalance();
+      })
+      .catch(function (e) {
+        if (e && e.code === 4001) return;              // user declined — not an error worth shouting about
+        show('<div class="verdict no"><span class="m">×</span> Could not connect</div>' +
+             '<p style="margin-top:10px;font-size:.9rem">' + esc(e && e.message ? e.message : 'Unknown error') + '</p>');
+      })
+      .then(function () { cx.disabled = false; });
+
+    if (eth.on) {
+      eth.on('accountsChanged', function (a) { setWallet(a && a[0]); });
+      eth.on('chainChanged', function () { location.reload(); });
+    }
+  }
+  cx.addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (account) {
+      // Connected: open the panel rather than disconnecting on the spot. The
+      // old behaviour dropped the wallet from a button that gave no warning.
+      if (wpop && wpop.hidden) openPop(); else closePop();
+      return;
+    }
+    try { localStorage.removeItem(OFF_KEY); } catch (e2) {}
+    connect();
+  });
+
+  if (wpop) {
+    wpop.addEventListener('click', function (e) { e.stopPropagation(); });
+    var wdc = $('wdc');
+    if (wdc) wdc.addEventListener('click', function () { closePop(); disconnect(); });
+    var wcopy = $('wcopy');
+    if (wcopy) wcopy.addEventListener('click', function () {
+      if (!account) return;
+      var done = function () { wfull.textContent = 'Copied'; setTimeout(function () {
+        if (account) wfull.textContent = account; }, 1100); };
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(account).then(done).catch(function () {});
+      } else {
+        var t = document.createElement('textarea');
+        t.value = account; t.style.cssText = 'position:fixed;opacity:0';
+        document.body.appendChild(t); t.select();
+        try { document.execCommand('copy'); done(); } catch (e3) {}
+        t.remove();
+      }
+    });
+  }
+  document.addEventListener('click', closePop);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closePop(); });
+
+  /* ══════════════ verify ══════════════ */
+  var res = $('res');
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function show(html) { res.innerHTML = html; res.hidden = false; }
+  function row(k, v, cls) {
+    return '<div class="led"><span class="k">' + k + '</span><span class="d"></span>' +
+           '<span class="v ' + (cls || '') + '">' + v + '</span></div>';
+  }
+
+  function verify() {
+    var ca = ($('ca').value || '').trim();
+    if (!/^0x[0-9a-fA-F]{40}$/.test(ca)) {
+      show('<div class="verdict no"><span class="m">×</span> That is not a contract address</div>' +
+           '<p style="margin-top:10px;font-size:.9rem">Paste the 42-character address of your token, starting with 0x.</p>');
+      return;
+    }
+    show('<div class="verdict wait"><span class="spin"></span> Reading the fee split on-chain…</div>');
+
+    Promise.all([
+      feeRecipients(ca),
+      call('eth_call', [{ to: ca, data: SEL_SYM }, 'latest']).catch(function () { return null; }),
+      call('eth_call', [{ to: ca, data: SEL_NAME }, 'latest']).catch(function () { return null; })
+    ]).then(function (r) {
+      var fees = r[0];
+      var sym = decodeString(r[1]) || '???';
+      var name = decodeString(r[2]) || '';
+
+      if (!fees.length) {
+        show('<div class="verdict no"><span class="m">×</span> Not a long.xyz token</div>' +
+             '<p style="margin-top:10px;font-size:.9rem">This address has no fee split registered with long.xyz, so there is no stock stream to distribute. Check the address, or launch the token on long.xyz first.</p>');
+        return;
+      }
+
+      // The creator always holds the majority share; the launchpad takes ~5%.
+      var creator = fees.slice().sort(function (a, b) { return b.share - a.share; })[0];
+      var mine = account && creator.addr === account;
+
+      var html = '';
+      html += '<div class="verdict ' + (mine ? 'ok' : 'wait') + '">' +
+              '<span class="m">' + (mine ? '✓' : '•') + '</span> ' +
+              (mine ? 'You own this fee stream' : 'Fee stream found') + '</div>';
+
+      html += '<div style="margin-top:14px">';
+      html += row('Token', esc(sym) + (name ? ' <span style="color:var(--faint)">· ' + esc(name) + '</span>' : ''), 'v-sig');
+      fees.slice().sort(function (a, b) { return b.share - a.share; }).forEach(function (f, i) {
+        html += row(i === 0 ? 'Fee receiver' : 'Launchpad',
+                    short(f.addr) + ' <span style="color:var(--faint)">' + (f.share * 100).toFixed(1) + '%</span>',
+                    i === 0 ? 'v-set' : 'v-mut');
+      });
+      html += '</div>';
+
+      if (mine) {
+        html += '<p style="margin-top:16px;font-size:.92rem;color:var(--muted)">' +
+                'This wallet is the recorded fee receiver, so the stream can be pointed at FLOWETF and distributed to holders every 6 hours.</p>' +
+                '<div class="acts" style="margin-top:14px"><a class="btn btn-p" href="' + X_URL + '" rel="noopener" target="_blank">Set it up</a></div>';
+      } else if (!account) {
+        html += '<p style="margin-top:16px;font-size:.92rem;color:var(--muted)">' +
+                'Connect the wallet that launched this token to prove you control the fee stream.</p>' +
+                '<div class="acts" style="margin-top:14px"><button class="btn btn-s" id="cx2">Connect wallet</button></div>';
+      } else {
+        html += '<p style="margin-top:16px;font-size:.92rem;color:var(--muted)">' +
+                'The connected wallet is not the fee receiver for this token. Switch to <code>' + short(creator.addr) + '</code> to continue.</p>';
+      }
+
+      show(html);
+      var b = $('cx2'); if (b) b.addEventListener('click', connect);
+    }).catch(function (e) {
+      show('<div class="verdict no"><span class="m">×</span> Could not reach the chain</div>' +
+           '<p style="margin-top:10px;font-size:.9rem">' + esc(e && e.message ? e.message : 'Network error') +
+           '. This is usually a temporary network problem — try again in a moment, or connect a wallet so the read goes through your own node.</p>');
+    });
+  }
+  $('go').addEventListener('click', verify);
+  $('ca').addEventListener('keydown', function (e) { if (e.key === 'Enter') verify(); });
+
+  /* ══════════════ live token grid ══════════════ */
+  /* ══════════════ live token grid ══════════════
+     Two classes, and the difference between them is the whole point.
+
+     LOCKED   the vault was the recorded fee beneficiary from the moment the
+              token launched, so the stream cannot be taken back by anyone.
+              This list is read from the factory on-chain and cannot be edited
+              by hand — which is exactly why it is worth trusting.
+
+     DELEGATED  the team points their fee stream at us voluntarily. It works
+              identically day to day, and it can be withdrawn at any time. That
+              is not a flaw to hide; it is the difference a holder deserves to
+              see before deciding what a payout is worth.
+
+     Showing them in the same colour would quietly erase that distinction, so
+     they do not share a colour, a border, or a badge. */
+  var FACTORY = '0xd2ba46aeffec4bfddde62c2dd3e8c76c5c9aeedc';
+  var HOOK    = '0x4e3468951d49f2eea976ed0d6e75ffcb44a9a544';
+  var EXPLORER = 'https://robinhoodchain.blockscout.com';
+
+  function selOf(sig) {
+    /* tiny keccak-free selector table — only the four we call */
+    /* Verified by tools/uji-selector.mjs, which recomputes every one of these
+       from its signature on each run. Three of the five were wrong when first
+       written by hand and the page would simply have shown nothing — a silent
+       failure, since an empty grid looks exactly like "no tokens yet". */
+    return { 'vaultCount()': '0xa7c6a100', 'page(uint256,uint256)': '0xebb9e69c',
+             'symbol()': '0x95d89b41', 'name()': '0x06fdde03',
+             'stockToken()': '0xbaa8e786', 'tokenURI()': '0x3c130d90',
+             'vaultOf(address)': '0x0709df45', 'lastCollectAt()': '0xf5799a54',
+             'cycleInterval()': '0x3b26156e', 'operator()': '0x570ca735',
+             'owner()': '0x8da5cb5b' }[sig];
+  }
+  function decStr(out) {
+    if (!out || out === '0x') return null;
+    var h = out.slice(2);
+    try {
+      var L = parseInt(h.substr(64, 64), 16);
+      if (!L || L > 120) return null;
+      var b = h.substr(128, L * 2), s = '';
+      for (var i = 0; i < b.length; i += 2) s += String.fromCharCode(parseInt(b.substr(i, 2), 16));
+      return s.replace(/[^\x20-\x7E]/g, '').trim() || null;
+    } catch (e) { return null; }
+  }
+
+  /* Artwork comes from the chain, not from a list we maintain.
+     tokenURI() -> ipfs JSON -> image_hash -> the image, both hops relayed
+     through /ipfs so there is no CORS, no gateway rate limit, and a year of
+     caching on content that can never change.
+     An earlier check concluded no on-chain URI existed; that was wrong, and the
+     cause was a mistyped selector rather than anything about the token. */
+  /* A token's metadata URI is whatever its launch put there. long.xyz uses
+     ipfs://, ours uses an https:// URL on this domain, and the launcher accepts
+     either — so both have to resolve. Anything else is ignored rather than
+     fetched, so a token cannot point the page at an arbitrary host. */
+  function resolveUri(u) {
+    if (typeof u !== 'string') return null;
+    if (u.indexOf('ipfs://') === 0) return '/ipfs/' + u.slice(7);
+    if (u.indexOf('https://flowetf.xyz/') === 0) return u.slice('https://flowetf.xyz'.length);
+    return null;
+  }
+  async function tokenImage(addr) {
+    try {
+      var uri = decStr(await call('eth_call', [{ to: addr, data: selOf('tokenURI()') }, 'latest']));
+      uri = resolveUri(uri);
+      if (!uri) return null;
+      var meta = await fetch(uri).then(function (r) { return r.json(); });
+      var img = meta.image_hash || meta.image;
+      if (!img || typeof img !== 'string') return null;
+      return resolveUri(img);
+    } catch (e) { return null; }
+  }
+
+  /* A deterministic mark so every token looks like itself even before anyone
+     supplies a logo. Beats a grey placeholder and beats inventing an image. */
+  function identicon(addr) {
+    var a = addr.replace(/^0x/, '');
+    var h1 = parseInt(a.substr(0, 6), 16) % 360;
+    var h2 = (h1 + 40 + parseInt(a.substr(6, 4), 16) % 90) % 360;
+    var rot = parseInt(a.substr(10, 4), 16) % 360;
+    return '<span class="ph" style="background:linear-gradient(' + rot + 'deg,hsl(' + h1 +
+      ',70%,42%),hsl(' + h2 + ',75%,26%))">' + a.substr(0, 2).toUpperCase() + '</span>';
+  }
+
+  function card(t) {
+    var locked = t.cls === 'locked';
+    var img = t.image
+      ? '<img src="' + esc(t.image) + '" alt="" loading="lazy" onerror="this.outerHTML=\'' + '\'">'
+      : identicon(t.token);
+    var ours = t.token && t.token.toLowerCase() === OFFICIAL;
+    return '<a class="tk rise ' + (locked ? 'tk-lock' : 'tk-del') + (ours ? ' tk-own' : '') +
+      '" href="/t?a=' + esc(t.token) + '">' +
+      (ours ? '<span class="tk-official">OFFICIAL</span>' : '') +
+      '<span class="tk-badge' + (ours ? ' tk-badge-2' : '') + '">' + (locked ? 'LOCKED' : 'DELEGATED') + '</span>' +
+      '<span class="tk-wm">' + esc((t.anchorSym || '?').slice(0, 4)) + '</span>' +
+      '<span class="tk-t">' + img +
+        '<span class="tk-n"><span class="sym">$' + esc(t.symbol) + '</span>' +
+        '<span class="an">anchored to <b>' + esc(t.anchorSym || '—') + '</b></span></span>' +
+      '</span>' +
+      '<span class="tk-f">' + (locked
+        ? 'fee stream cannot be withdrawn'
+        : 'the team can withdraw this at any time') + '</span></a>';
+  }
+
+  var grid = $('grid');
+  function renderGrid(list) {
+    if (!list.length) {
+      grid.className = '';
+      grid.innerHTML =
+        '<div class="empty"><span class="lab on">Onboarding now</span>' +
+        '<h3 style="margin-top:10px;font-size:1.05rem">No tokens are live yet</h3>' +
+        '<p>The first token wired to FLOWETF appears here, with its anchor and everything ' +
+        'it has distributed. We would rather show you an empty shelf than invented logos.</p></div>';
+      return;
+    }
+    grid.className = 'tokens';
+    grid.innerHTML = list.map(card).join('');
+    if (!reduced && 'IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (es) {
+        es.forEach(function (e, i) {
+          if (!e.isIntersecting) return;
+          setTimeout(function () { e.target.classList.add('in'); }, i * 80);
+          io.unobserve(e.target);
+        });
+      }, { rootMargin: '0px 0px -8% 0px' });
+      grid.querySelectorAll('.rise').forEach(function (n) { io.observe(n); });
+    } else {
+      grid.querySelectorAll('.rise').forEach(function (n) { n.classList.add('in'); });
+    }
+  }
+
+  async function loadTokens() {
+    var out = [];
+    /* class 1 — straight from the factory, so it cannot be faked */
+    try {
+      var n = Number(BigInt(await call('eth_call',
+        [{ to: FACTORY, data: selOf('vaultCount()') }, 'latest'])));
+      if (n > 0) {
+        var pg = await call('eth_call', [{ to: FACTORY,
+          data: selOf('page(uint256,uint256)') + numWord(0n) + numWord(BigInt(Math.min(n, 60))) }, 'latest']);
+        var h = pg.slice(2);
+        var lenV = parseInt(h.substr(64 * 2, 64), 16);
+        var vaults = [], tokens = [];
+        for (var i = 0; i < lenV; i++) vaults.push('0x' + h.substr((3 + i) * 64 + 24, 40));
+        var off2 = parseInt(h.substr(64, 64), 16) / 32;
+        var lenT = parseInt(h.substr(off2 * 64, 64), 16);
+        for (var j = 0; j < lenT; j++) tokens.push('0x' + h.substr((off2 + 1 + j) * 64 + 24, 40));
+        for (var k = 0; k < tokens.length; k++) {
+          var sym = decStr(await call('eth_call', [{ to: tokens[k], data: selOf('symbol()') }, 'latest']).catch(function () { return null; }));
+          var stock = await call('eth_call', [{ to: vaults[k], data: selOf('stockToken()') }, 'latest']).catch(function () { return null; });
+          var anchorSym = null;
+          if (stock && stock !== '0x') {
+            anchorSym = decStr(await call('eth_call', [{ to: '0x' + stock.slice(26), data: selOf('symbol()') }, 'latest']).catch(function () { return null; }));
+          }
+          out.push({ cls: 'locked', token: tokens[k], vault: vaults[k], symbol: sym || '???',
+                     anchorSym: anchorSym, image: await tokenImage(tokens[k]) });
+        }
+      }
+    } catch (e) { /* an unreachable chain must not blank the page */ }
+
+    /* class 2 — our own list, and labelled as such */
+    try {
+      var j2 = await fetch('/tokens.json').then(function (r) { return r.json(); });
+      for (var di = 0; di < (j2.delegated || []).length; di++) {
+        var d = j2.delegated[di];
+        out.push({ cls: 'delegated', token: d.token, symbol: d.symbol, anchorSym: d.anchor,
+                   image: (j2.images || {})[d.token] || await tokenImage(d.token) });
+      }
+    } catch (e) {}
+
+    renderGrid(out);
+  }
+  /* NOT named `word`: a function of that name already exists above for
+     reading a 32-byte word out of a hex string, and `var` hoisting made
+     this assignment silently replace it. Every decode then read the whole
+     response as one number, and the loop that followed hung the tab. */
+  var numWord = function (v) { return v.toString(16).padStart(64, '0'); };
+  loadTokens();
+
+  /* single source for every X link */
+  ['xcta','xfoot','xtop'].forEach(function (id) { var e = $(id); if (e) e.href = X_URL; });
+
+  /* one FAQ panel at a time */
+  document.querySelectorAll('details').forEach(function (d) {
+    d.addEventListener('toggle', function () {
+      if (!d.open) return;
+      document.querySelectorAll('details').forEach(function (o) { if (o !== d) o.open = false; });
+    });
+  });
+
+  /* Reconnect silently if the wallet already authorised this origin — unless the
+     visitor disconnected on purpose, in which case reconnecting for them would
+     make the button look broken. */
+  var userOff = false;
+  try { userOff = localStorage.getItem(OFF_KEY) === '1'; } catch (e) {}
+  if (!userOff && window.ethereum && window.ethereum.request) {
+    window.ethereum.request({ method: 'eth_accounts' }).then(function (a) {
+      if (a && a.length) { provider = window.ethereum; setWallet(a[0]); }
+    }).catch(function () {});
+  }
+
+  // Everything above is defined by now, so the ring can safely read the chain.
+  initRing();
+})();
+</script>
+</body>
+</html>

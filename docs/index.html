@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Docs — FLOWETF</title>
+<meta name="theme-color" content="#060C09">
+<meta name="description" content="How FLOWETF works. Launch mode, manual mode, the six hour cycle, the burn, and every rule the contracts enforce.">
+<meta name="robots" content="index,follow">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23060C09'/><path d='M9 8v16h8' stroke='%23C8FF00' stroke-width='3.2' fill='none' stroke-linecap='square'/><circle cx='22' cy='11' r='2.6' fill='%23F5B841'/></svg>">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#060C09; --paper:#0B1410; --paper2:#101C16;
+  --rule:#18291F; --rule2:#23392D;
+  --signal:#C8FF00; --settle:#F5B841; --bad:#FF6F5E;
+  --text:#E8F0EA; --muted:#7A8C82; --faint:#4A5A51;
+  --display:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --gut:20px;
+}
+@media(min-width:820px){:root{--gut:40px}}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{background:var(--ink);color:var(--text);font-family:var(--display);font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--signal);outline-offset:3px;border-radius:2px}
+code{font-family:var(--mono);font-size:.86em;color:var(--signal);overflow-wrap:anywhere}
+.lab{font-family:var(--mono);font-size:.66rem;font-weight:600;letter-spacing:.19em;text-transform:uppercase;color:var(--faint)}
+
+header{position:sticky;top:0;z-index:60;background:rgba(6,12,9,.97);backdrop-filter:blur(12px);border-bottom:1px solid var(--rule)}
+.hd{display:flex;align-items:center;justify-content:space-between;gap:12px;height:58px;max-width:1180px;margin:0 auto;padding:0 var(--gut)}
+/* Brand: the coin mark plus the wordmark.
+   Drawn as inline SVG rather than the 84KB PNG the token uses. In a header it
+   has to be sharp at 30px and present on the first paint, and a network request
+   for a logo is a request that can arrive late or not at all. */
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.brand .mk{width:30px;height:30px;flex:none;display:block;transition:transform .35s cubic-bezier(.2,.9,.3,1.2)}
+.brand:hover .mk{transform:rotate(-28deg)}
+.brand .wm{font-weight:800;letter-spacing:-.045em;font-size:1.32rem;line-height:1;color:var(--text)}
+.brand .wm .s{color:var(--settle)}
+@media(min-width:820px){.brand .mk{width:34px;height:34px}.brand .wm{font-size:1.5rem}}
+@media(prefers-reduced-motion:reduce){.brand .mk{transition:none}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;font-weight:700;font-size:.85rem;padding:9px 15px;min-height:42px;border-radius:3px;text-decoration:none;border:1px solid var(--rule2);color:var(--text);transition:border-color .15s,color .15s}
+.btn:hover{border-color:var(--signal);color:var(--signal)}
+.btn-p{background:var(--signal);border-color:var(--signal);color:#08120b}
+.btn-p:hover{background:#d6ff33;border-color:#d6ff33;color:#08120b}
+
+/* Two columns once there is room for a sidebar that does not crowd the text.
+   Below that the nav collapses to a strip at the top, because a sidebar on a
+   phone is just a wall between the reader and the page. */
+.shell{max-width:1180px;margin:0 auto;padding:0 var(--gut);display:block}
+@media(min-width:960px){
+  .shell{display:grid;grid-template-columns:232px 1fr;gap:52px;align-items:start}
+  .side{position:sticky;top:58px;max-height:calc(100vh - 58px);overflow-y:auto;padding:30px 0 40px}
+}
+.side{padding:18px 0 6px}
+.side ul{list-style:none}
+/* The page-wide bullet does not belong in a nav. */
+.side li{padding-left:0;margin:0}
+.side li::before{display:none}
+.side a{display:block;text-decoration:none;color:var(--muted);font-size:.87rem;padding:6px 0 6px 14px;border-left:2px solid var(--rule);transition:color .15s,border-color .15s}
+.side a:hover{color:var(--text);border-color:var(--rule2)}
+.side a.on{color:var(--signal);border-color:var(--signal)}
+.side .grp{margin-top:16px}
+.side .grp:first-child{margin-top:0}
+
+/* On phones the nav becomes a horizontal rail. It stays visible so the reader
+   always knows the page has more sections than the one under their thumb. */
+@media(max-width:959px){
+  .side{position:sticky;top:58px;z-index:50;background:var(--ink);border-bottom:1px solid var(--rule);margin:0 calc(var(--gut)*-1);padding:10px var(--gut)}
+  /* One rail, not a grid. The group wrappers have to stop being flex items or
+     each group stacks into its own column and the nav becomes a block of links
+     sitting on top of the article. */
+  .side{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+  .side::-webkit-scrollbar{display:none}
+  .side .grp{display:contents}
+  .side ul{display:contents}
+  .side a{white-space:nowrap;border-left:0;border-bottom:2px solid var(--rule);padding:5px 2px}
+  .side a.on{border-color:var(--signal)}
+  .side .grp{margin-top:0}
+  .side .grp-t{display:none}
+}
+.grp-t{font-family:var(--mono);font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);margin:0 0 7px 14px}
+
+main{padding:30px 0 90px;min-width:0}
+.doc{max-width:68ch}
+h1{font-size:clamp(1.8rem,5.5vw,2.5rem);font-weight:800;letter-spacing:-.035em;line-height:1.08}
+h2{font-size:clamp(1.25rem,3.6vw,1.55rem);font-weight:800;letter-spacing:-.02em;line-height:1.2;margin:52px 0 14px;scroll-margin-top:120px}
+h3{font-size:1.02rem;font-weight:700;margin:26px 0 8px}
+p{color:var(--muted);margin:12px 0}
+.lead{font-size:1.06rem;color:var(--text);margin-top:14px}
+ul,ol.steps{margin:14px 0 14px 0;padding-left:0;list-style:none}
+li{color:var(--muted);margin:9px 0;padding-left:20px;position:relative}
+li::before{content:"";position:absolute;left:4px;top:.72em;width:5px;height:5px;border-radius:50%;background:var(--rule2)}
+
+/* Numbered steps. The number is the point of a walkthrough, so it is set in the
+   accent rather than tucked into the text. */
+ol.steps{counter-reset:st}
+ol.steps>li{counter-increment:st;padding-left:38px;margin:18px 0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:.05em;width:25px;height:25px;border-radius:3px;
+  background:none;border:1px solid var(--rule2);color:var(--signal);font-family:var(--mono);font-size:.78rem;font-weight:700;
+  display:grid;place-content:center}
+ol.steps>li b{color:var(--text);font-weight:700}
+
+.card{border:1px solid var(--rule2);border-radius:4px;background:var(--paper);padding:16px 18px;margin:18px 0}
+.card.warn{border-left:2px solid var(--settle)}
+.card.good{border-left:2px solid var(--signal)}
+.card p:first-child{margin-top:0}
+.card p:last-child{margin-bottom:0}
+
+.tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.9rem}
+.tbl th,.tbl td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--rule);vertical-align:top}
+.tbl th{font-family:var(--mono);font-size:.64rem;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);font-weight:600}
+.tbl td:first-child{color:var(--text);white-space:nowrap}
+.tbl td:last-child{color:var(--muted)}
+.tbl b{font-family:var(--mono);color:var(--signal);font-weight:700}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+.two{display:grid;gap:16px;margin:20px 0}
+@media(min-width:700px){.two{grid-template-columns:1fr 1fr}}
+.mode{border:1px solid var(--rule2);border-radius:4px;padding:18px;background:var(--paper)}
+.mode.lock{border-color:#24401C}
+.mode.man{border-color:#3A4A2A;border-style:dashed}
+.mode h3{margin-top:0}
+.tag{font-family:var(--mono);font-size:.58rem;letter-spacing:.14em;padding:3px 7px;border-radius:2px;display:inline-block;margin-bottom:10px}
+.lock .tag{background:var(--signal);color:#0A1000}
+.man .tag{color:var(--settle);border:1px solid #4A3A18}
+
+.flow{margin:20px 0;border-left:2px solid var(--rule2);padding-left:18px}
+.flow .f{margin:14px 0}
+.flow .f b{display:block;color:var(--text);font-size:.95rem}
+.flow .f span{color:var(--muted);font-size:.9rem}
+
+.foot{border-top:1px solid var(--rule);margin-top:64px;padding-top:22px;font-size:.86rem;color:var(--faint)}
+.foot a{color:var(--muted);text-decoration:none;border-bottom:1px solid var(--rule2)}
+.foot a:hover{color:var(--signal)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hd">
+    <a class="brand" href="/">
+      <svg class="mk" viewBox="0 0 40 40" aria-hidden="true">
+        <g fill="none" stroke-linecap="round" stroke-width="4.6">
+          <path stroke="var(--settle)" d="M21.71 6.10A14 14 0 0 1 33.90 18.29"/>
+          <path stroke="var(--signal)" d="M33.90 21.71A14 14 0 0 1 21.71 33.90"/>
+          <path stroke="var(--signal)" d="M18.29 33.90A14 14 0 0 1 6.10 21.71"/>
+          <path stroke="var(--signal)" d="M6.10 18.29A14 14 0 0 1 18.29 6.10"/>
+        </g>
+        <polyline fill="none" stroke="#E8F0EA" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"
+                  points="13.73,24.93 17.98,22.15 22.02,23.67 27.17,16.19"/>
+        <circle cx="27.17" cy="16.19" r="2.1" fill="var(--settle)"/>
+      </svg>
+      <span class="wm">FLOW<span class="s">ETF</span></span>
+    </a>
+    <a class="btn btn-p" href="/launch">Launch a token</a>
+  </div>
+</header>
+
+<div class="shell">
+
+  <nav class="side" aria-label="Sections">
+    <div class="grp">
+      <div class="grp-t">Start</div>
+      <ul>
+        <li><a href="#what" class="on">What this does</a></li>
+        <li><a href="#modes">Two ways in</a></li>
+      </ul>
+    </div>
+    <div class="grp">
+      <div class="grp-t">Walkthrough</div>
+      <ul>
+        <li><a href="#launch">Launch mode</a></li>
+        <li><a href="#manual">Manual mode</a></li>
+      </ul>
+    </div>
+    <div class="grp">
+      <div class="grp-t">Mechanics</div>
+      <ul>
+        <li><a href="#cycle">The six hour cycle</a></li>
+        <li><a href="#burn">The burn</a></li>
+        <li><a href="#split">Where the fees go</a></li>
+      </ul>
+    </div>
+    <div class="grp">
+      <div class="grp-t">Reference</div>
+      <ul>
+        <li><a href="#rules">Rules and numbers</a></li>
+        <li><a href="#fixed">What can change</a></li>
+        <li><a href="#verify">Check it yourself</a></li>
+        <li><a href="#limits">Honest limits</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main>
+  <div class="doc">
+
+    <span class="lab">Documentation</span>
+    <h1>How FLOWETF works</h1>
+    <p class="lead">A token launched on long.xyz earns trading fees. This platform takes those fees and sends them to the people holding the token, every six hours, without anyone having to claim anything.</p>
+    <p>This page covers both ways to connect a token, what happens on every cycle, and every rule the contracts enforce. Nothing here is a plan. It is all live on Robinhood Chain today.</p>
+
+    <h2 id="what">What this does</h2>
+    <p>When you launch a token on long.xyz it gets paired with an anchor asset. Usually that anchor is a tokenized stock like SPY or NVDA. Every trade in that pool pays a fee, and the fee arrives in both tokens at once. Some in your token, some in the anchor.</p>
+    <p>By default those fees go to whoever launched the token. FLOWETF puts a vault in that position instead. The vault has one job. Every six hours it collects the fees, burns half of the fee paid in your token, and sends the anchor side out to holders.</p>
+    <div class="card good">
+      <p><b>The part that matters</b>. Once the vault is the fee recipient, nothing can move it. The vault has no function that redirects the stream, not for us and not for the team that launched the token. That is the difference between a promise and a fact you can check.</p>
+    </div>
+
+    <h2 id="modes">Two ways in</h2>
+    <p>It does not matter whether your token already exists. Both routes end in the same place, with the vault holding the fee rights and unable to give them back.</p>
+    <div class="two">
+      <div class="mode lock">
+        <span class="tag">LAUNCH MODE</span>
+        <h3>You have not launched yet</h3>
+        <p>Create the token here. The vault is named as the fee recipient in the launch transaction itself, so there is never a moment where the stream points anywhere else.</p>
+        <p>Cost is around four dollars in gas. long.xyz charges nothing to launch.</p>
+      </div>
+      <div class="mode man">
+        <span class="tag">MANUAL MODE</span>
+        <h3>Your token is already live</h3>
+        <p>Deploy a vault, then move your fee rights to it from the wallet that currently receives them. Same end state, one extra transaction.</p>
+        <p>Cost is around two dollars in gas.</p>
+      </div>
+    </div>
+
+    <h2 id="launch">Launch mode, step by step</h2>
+    <p>Go to <a href="/launch"><code>flowetf.xyz/launch</code></a> and connect a wallet on Robinhood Chain. The page walks you through four steps and shows you what each transaction does before you sign it.</p>
+    <ol class="steps">
+      <li><b>Fill in the token.</b> Name, ticker, and the anchor you want to pair against. Tickers are letters only, no digits or spaces, because the chain rejects anything else. The page checks availability while you type. Image, description and social links are optional and you can skip all three.</li>
+      <li><b>Deploy your vault.</b> This creates a contract that belongs to your token alone. The address is worked out before you sign, and the page mines a salt so the address sorts correctly against long.xyz's own beneficiary. Get that wrong and the launch fails with no explanation, so the page will not let you past it.</li>
+      <li><b>Launch on long.xyz.</b> The vault address goes into the launch as the ninety five percent fee recipient. long.xyz keeps five percent, which is their protocol fee and applies to every token on their launcher. Your entire supply goes into the pool. You receive no tokens, which is how their launcher works for everyone.</li>
+      <li><b>Register.</b> This tells our factory the pair exists. It does not take your word for it. The contract reads the fee split straight off long.xyz and refuses unless the vault really is holding at least ninety percent. That is why the token list on the front page can be trusted even though we publish it.</li>
+    </ol>
+    <div class="card">
+      <p>After that you do nothing. The token appears on the front page, the cycle starts, and payouts run on their own. There is no dashboard to check and no button to press.</p>
+    </div>
+
+    <h2 id="manual">Manual mode, step by step</h2>
+    <p>Your token is already trading on long.xyz and the fees are going to your own wallet. You can hand that stream to a vault and it becomes permanent.</p>
+    <ol class="steps">
+      <li><b>Deploy a vault for your token.</b> Same contract as launch mode. Use the launch page and stop after step two, or call <code>deployVault</code> on the factory directly. You pay the gas and the vault belongs to your token.</li>
+      <li><b>Move your fee rights.</b> From the wallet that currently receives the fees, call <code>updateBeneficiary(poolId, vault)</code> on long.xyz's pool contract. That function moves the caller's own entry, so nobody else can do this for you and nobody else can undo it.</li>
+      <li><b>Register.</b> Call <code>register(token, vault)</code> on the factory. It reads the split from the chain and confirms the vault now holds your share. If the move in step two did not go through, this step fails and nothing is recorded.</li>
+    </ol>
+    <div class="card warn">
+      <p><b>Read this twice.</b> Step two cannot be reversed. Once the vault holds the fee rights, the vault is the only thing that could move them and it has no function to do so. You are giving up the stream permanently in exchange for holders being able to prove it.</p>
+    </div>
+
+    <h2 id="cycle">The six hour cycle</h2>
+    <p>Every six hours the same sequence runs for every registered token. It runs whether or not anybody is watching and whether or not there is enough to pay out.</p>
+    <div class="flow">
+      <div class="f"><b>1. Collect</b><span>Pull the accumulated fees out of long.xyz into the vault. Both tokens arrive, your token and the anchor.</span></div>
+      <div class="f"><b>2. Burn</b><span>Half the fee paid in your token goes to the dead address. This happens every single cycle and does not depend on the payout.</span></div>
+      <div class="f"><b>3. Check the pot</b><span>Value the anchor side in dollars. If it clears the threshold the cycle opens. If not, it is skipped and the anchor stays in the vault for next time.</span></div>
+      <div class="f"><b>4. Pay</b><span>Send the anchor out to holders, in proportion to how much of your token they hold at that moment.</span></div>
+    </div>
+    <p>A skipped cycle is not a lost cycle. Nothing is returned and nothing is written off. The anchor sits in the vault and joins the next pot, so a quiet week simply means a larger payout later.</p>
+
+    <h2 id="burn">The burn</h2>
+    <p>Half of every fee paid in your token is destroyed. Not held, not sold, not moved to a treasury we control. Sent to an address nobody has the keys to.</p>
+    <div class="card good">
+      <p>The fifty percent floor is a constant in the contract. We can raise it. We cannot lower it, and neither can the team that launched the token. If we ever wanted to burn less we would have to deploy a different contract, which would show up as a different address.</p>
+    </div>
+    <h3>Why this compounds</h3>
+    <p>The burn is funded by trading, and trading is what the payout is funded by too. They move together.</p>
+    <ul>
+      <li>Someone trades. The pool takes a fee in both tokens.</li>
+      <li>Six hours later, half the fee paid in your token is burned. Supply goes down and it never comes back.</li>
+      <li>The anchor side of the same fee goes to holders as real tokenized stock.</li>
+      <li>Holding pays something, so there is a reason to keep holding rather than sell into the next buyer.</li>
+    </ul>
+    <p>More volume burns more supply and pays out more at the same time. That is the whole flywheel. There is no emission, no staking contract, and no yield coming from anywhere except people trading the token.</p>
+
+    <h2 id="split">Where the fees go</h2>
+    <p>The fee arrives as two separate amounts and they are treated differently. Mixing them up is the most common misreading, so here is each side on its own.</p>
+    <h3>The anchor side, usually a tokenized stock</h3>
+    <p>All of it is for holders. A single cycle sends at most seventy percent of what the vault holds, and the rest rolls forward. That cap exists so one cycle cannot drain the vault and leave the next one empty.</p>
+    <h3>The side paid in your own token</h3>
+    <div class="scroll">
+      <table class="tbl">
+        <tr><th>Order</th><th>Goes to</th><th>How much</th></tr>
+        <tr><td>First</td><td>Burned</td><td><b>50%</b> and never less</td></tr>
+        <tr><td>Then</td><td>Gas wallet</td><td>Whatever the remainder is, until it holds enough to keep paying transaction fees</td></tr>
+        <tr><td>Last</td><td>Creator</td><td><b>75%</b> of what is left after that</td></tr>
+        <tr><td>Last</td><td>FLOWETF</td><td><b>25%</b> of what is left after that</td></tr>
+      </table>
+    </div>
+    <p>The order is fixed in the contract. The burn is taken before anyone is paid, and the gas reserve is filled before either the creator or us. When volume is thin the creator and the platform receive nothing, and the burn and the holder payout still happen.</p>
+
+    <h2 id="rules">Rules and numbers</h2>
+    <div class="scroll">
+      <table class="tbl">
+        <tr><th>Rule</th><th>Value</th><th>Notes</th></tr>
+        <tr><td>Cycle length</td><td><b>6 hours</b></td><td>Collect and burn run on this clock no matter what</td></tr>
+        <tr><td>Payout threshold</td><td><b>$500</b></td><td>Below this the payout is skipped and the pot rolls forward</td></tr>
+        <tr><td>Max paid per cycle</td><td><b>70%</b></td><td>Of what the vault holds. The rest stays for the next cycle</td></tr>
+        <tr><td>Burn</td><td><b>50%</b></td><td>Of the fee paid in your token. Floor, can be raised only</td></tr>
+        <tr><td>Vault share of fees</td><td><b>95%</b></td><td>long.xyz keeps 5% at the protocol level</td></tr>
+        <tr><td>Platform cut</td><td><b>25%</b></td><td>Of the surplus in your token after burn and gas. Nothing from the anchor side</td></tr>
+        <tr><td>Creator cut</td><td><b>75%</b></td><td>Of that same surplus</td></tr>
+        <tr><td>Forced payout</td><td><b>7 days</b></td><td>If the threshold has not been met for a week the cycle opens anyway, so funds cannot sit forever</td></tr>
+        <tr><td>Minimum holding</td><td>set per cycle</td><td>Holders below it are skipped rather than paid dust that costs more in gas than it is worth</td></tr>
+      </table>
+    </div>
+
+    <h2 id="fixed">What can change and what cannot</h2>
+    <p>Some of the numbers above are settings and some are welded in. The difference is worth knowing before you commit a fee stream to this.</p>
+    <div class="scroll">
+      <table class="tbl">
+        <tr><th>Cannot change, ever</th><th>Can be adjusted</th></tr>
+        <tr>
+          <td>
+            Who receives the fees, once the vault holds them<br>
+            The burn floor of fifty percent<br>
+            The vault's code, since there is no proxy and no upgrade path<br>
+            That the platform cut never touches the anchor side
+          </td>
+          <td>
+            Cycle length<br>
+            Payout threshold, capped at $100,000<br>
+            Percent paid per cycle<br>
+            Burn, upward only<br>
+            Platform cut, capped at 30%
+          </td>
+        </tr>
+      </table>
+    </div>
+    <p>The caps are constants, not policy. Even with full control of the settings we cannot push the threshold past a hundred thousand dollars or take more than thirty percent of the surplus, because the contract rejects those values.</p>
+
+    <h2 id="verify">Check it yourself</h2>
+    <p>Everything on this site is read from the chain when the page loads. There is no database behind it. If you would rather not take our word for any of it, here is how to confirm the important parts directly.</p>
+    <h3>Who receives a token's fees</h3>
+    <p>Call <code>getBeneficiaries(token)</code> on long.xyz's pool contract at <code>0x4e3468951d49f2eea976ed0d6e75ffcb44a9a544</code>. It returns each recipient and their share. For a token wired to us you will see the vault at ninety five percent and long.xyz at five.</p>
+    <h3>That the vault cannot move the stream</h3>
+    <p>The source is published at <a href="/src/StockFeeDistributor.sol"><code>/src/StockFeeDistributor.sol</code></a>. Search it for <code>updateBeneficiary</code> and you will find nothing, because there is nothing to find.</p>
+    <h3>That the deployed vault is that source</h3>
+    <p>Our <a href="/src/FlowetfFactory.sol">factory source</a> is verified on the explorer and pins one code hash. Compile the <a href="/src/StockFeeDistributor.sol">vault source</a> with solc 0.8.36, optimizer on, two hundred runs, under the file name <code>S.sol</code>, then hash the init code. It matches the hash the factory publishes, and the factory will only deploy that one bytecode. The file name matters because it is part of the metadata hash.</p>
+    <h3>Who was paid, and how much</h3>
+    <p>The holder list a cycle pays from is published at <code>/holders/&lt;token&gt;.json</code>, and its merkle root is written on chain when the cycle opens. You can rebuild the root from the published list and compare. If we ever changed a list after the fact, the roots would stop matching.</p>
+
+    <h2 id="limits">Honest limits</h2>
+    <p>Things that are true and that we would rather you hear from us.</p>
+    <ul>
+      <li>Payout size depends entirely on trading activity and can be zero. There is no floor and no promised yield.</li>
+      <li>The payout is paid in the anchor asset, so its dollar value moves with that asset. If the anchor is a tokenized stock, that is the stock's price.</li>
+      <li>Distribution transactions are sent by an operator key we hold. The contract limits what that key can do, since a recipient has to genuinely hold the token and a cycle cannot exceed its cap, but the key is still ours and the honest thing is to say so.</li>
+      <li>Anchors that are themselves meme tokens are priced through their own pool and then through a stock, which is one more step that can drift. Pairing against a stock directly is the simpler road.</li>
+      <li>FLOWETF is not affiliated with Robinhood, with long.xyz, or with any issuer of the underlying assets.</li>
+    </ul>
+
+    <div class="foot">
+      <p><a href="/">All tokens</a> &nbsp;·&nbsp; <a href="/launch">Launch a token</a></p>
+    </div>
+
+  </div>
+  </main>
+</div>
+
+<script>
+/* Highlight the section being read. IntersectionObserver rather than a scroll
+   handler so it costs nothing while the page sits still. */
+(function () {
+  var links = [].slice.call(document.querySelectorAll('.side a'));
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute('href').slice(1)] = a; });
+  var heads = [].slice.call(document.querySelectorAll('h2[id]'));
+  if (!heads.length || !window.IntersectionObserver) return;
+
+  var seen = {};
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen[e.target.id] = e.isIntersecting; });
+    // The topmost visible heading wins, so scrolling up highlights correctly too.
+    for (var i = 0; i < heads.length; i++) {
+      if (seen[heads[i].id]) { mark(heads[i].id); return; }
+    }
+  }, { rootMargin: '-110px 0px -60% 0px' });
+  heads.forEach(function (h) { io.observe(h); });
+
+  function mark(id) {
+    links.forEach(function (a) { a.classList.remove('on'); });
+    if (map[id]) {
+      map[id].classList.add('on');
+      // Keep the active item in view on the phone rail.
+      if (window.innerWidth < 960 && map[id].scrollIntoView) {
+        map[id].scrollIntoView({ block: 'nearest', inline: 'center' });
+      }
+    }
+  }
+})();
+</script>
+</body>
+</html>
